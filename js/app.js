@@ -10,7 +10,7 @@
   const D = window.GDATA;
   const C = window.GCONTENT;
   const L = window.GLOGIC;
-  const STORE = { profile: 'gapp.profile', chat: 'gapp.chat', plan: 'gapp.plan', shop: 'gapp.shop' };
+  const STORE = { profile: 'gapp.profile', chat: 'gapp.chat', plan: 'gapp.plan', shop: 'gapp.shop', workout: 'gapp.workout' };
 
   const load = (key, fb) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fb; } catch { return fb; } };
   const save = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { console.warn('save fehlgeschlagen', e); } };
@@ -23,8 +23,21 @@
     chat: load(STORE.chat, []),
     chatBusy: false,
     onbStep: 0, onbDraft: {},
-    recipeId: null, recipeBack: 'ernaehrung', portions: 2
+    recipeId: null, recipeBack: 'ernaehrung', portions: 2,
+    workoutStore: load(STORE.workout, { progress: {}, history: [] }),
+    workout: null, energy: 'normal', exerciseId: null, woVariation: 0
   };
+
+  const HEALTH_TIPS = [
+    { ic: '🩸', t: 'Eisen + Vitamin C kombinieren: Linsen mit Paprika oder einem Spritzer Zitrone verbessern die Eisenaufnahme deutlich.' },
+    { ic: '☕', t: 'Kaffee & schwarzer Tee hemmen die Eisenaufnahme — am besten erst ~1 Stunde nach dem Essen trinken.' },
+    { ic: '🫘', t: 'Hülsenfrüchte sind günstig, sättigen lange und liefern viel pflanzliches Eiweiß.' },
+    { ic: '🥦', t: 'Faustregel der DGE: 5 Portionen Gemüse & Obst am Tag — bunt gemischt.' },
+    { ic: '🌾', t: 'Vollkorn statt Weißmehl: mehr Ballaststoffe, längere Sättigung, stabilerer Blutzucker.' },
+    { ic: '💧', t: 'Genug trinken: rund 1,5 Liter Wasser am Tag, bei Sport entsprechend mehr.' },
+    { ic: '☀️', t: 'Vitamin D ist im Winter oft knapp. Sonnenlicht hilft; ein Supplement nur faktenbasiert und in Maßen.' }
+  ];
+  const GROUP_LABEL = { push: 'Oberkörper', legs: 'Beine', core: 'Rumpf', cardio: 'Cardio', back: 'Rücken' };
 
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const mdLite = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -40,6 +53,7 @@
     if (!state.plan) { state.plan = L.generateWeek(C, state.profile); save(STORE.plan, state.plan); }
     if (state.route === 'ki') { renderChat(); return; }
     if (state.route === 'recipe') { renderRecipe(); nav.hidden = false; renderNav(); return; }
+    if (state.route === 'exercise') { renderExercise(); nav.hidden = false; renderNav(); return; }
     nav.hidden = false;
     renderNav();
     const view = { dashboard: renderDashboard, ernaehrung: renderErnaehrung, training: renderTraining, einkauf: renderEinkauf, mehr: renderMehr }[state.route] || renderDashboard;
@@ -106,6 +120,17 @@
     return 'Guten Abend';
   }
 
+  function ensureWorkout() {
+    const todayMs = new Date().setHours(0, 0, 0, 0);
+    if (!state.workout || state.workout.date !== todayMs || state.workout.energy !== state.energy || state.workout._v !== state.woVariation) {
+      state.workout = L.generateWorkout(C, state.profile, state.energy, state.workoutStore, state.woVariation);
+      state.workout._v = state.woVariation;
+    }
+    return state.workout;
+  }
+  const doneToday = () => (state.workoutStore.history || []).some(h => new Date(h.date).setHours(0, 0, 0, 0) === new Date().setHours(0, 0, 0, 0));
+  const tipOfDay = () => HEALTH_TIPS[Math.floor((Date.now() / 86400000)) % HEALTH_TIPS.length];
+
   function renderDashboard() {
     const p = state.profile;
     const idx = L.todayIndex(state.plan);
@@ -113,6 +138,9 @@
     const meals = day.meals.map(m => ({ m, r: recipeById(m.recipeId), n: L.recipeNutrients(C, recipeById(m.recipeId)).perServing }));
     const dayKcal = Math.round(meals.reduce((s, x) => s + x.n.kcal, 0));
     const shopCount = L.aggregateShopping(C, state.shop.sources).length;
+    const tip = tipOfDay();
+    const wo = ensureWorkout();
+    const woDone = doneToday();
     let i = 0; const di = () => `style="--i:${i++}"`;
     return `<div class="stagger">
       <div class="greet" ${di()}>
@@ -125,6 +153,11 @@
         <div class="stat"><div class="stat-ic">⏱️</div><div class="stat-val">${esc(p.timePerDay)}′</div><div class="stat-lbl">Workout</div></div>
         <div class="stat"><div class="stat-ic">🛒</div><div class="stat-val">${shopCount}</div><div class="stat-lbl">Einkauf</div></div>
       </div>
+
+      <button class="health-banner" id="health-banner" ${di()}>
+        <span class="hb-ic">${tip.ic}</span>
+        <span><span class="hb-label">Gesundheits-Wissen</span><span class="hb-text">${esc(tip.t)}</span></span>
+      </button>
 
       <div ${di()}>
         <div class="section-title">Heute essen</div>
@@ -150,10 +183,14 @@
         </div>
       </div>
 
-      <div class="card" ${di()} style="margin-top:16px">
-        <div class="card-title">💪 Heutiges Workout</div>
-        <p class="muted">Dein Home-Workout (${esc(labelFor('timePerDay', p.timePerDay))}) kommt in <b>Phase 2</b> — mit Bildern und Technik.</p>
-      </div>
+      <button class="row-card" data-go="training" ${di()} style="margin-top:16px;align-items:flex-start">
+        <div class="row-thumb g-terracotta">💪</div>
+        <div class="row-main">
+          <div class="row-title">Heutiges Workout ${woDone ? '✅' : ''}</div>
+          <div class="row-sub">${wo.items.length} Übungen · ${esc(labelFor('timePerDay', p.timePerDay))} · ${woDone ? 'heute geschafft' : 'jetzt starten'}</div>
+        </div>
+        <div class="row-chev">›</div>
+      </button>
     </div>`;
   }
 
@@ -266,19 +303,93 @@
   }
 
   function renderTraining() {
-    return `<div class="page-head"><h1 class="page-title">Training</h1></div>
-      <div class="empty-hint"><span class="eh-emoji">💪</span>Der Home-Workout-Generator mit Bildern kommt in Phase 2.</div>`;
+    const p = state.profile;
+    const wo = ensureWorkout();
+    const done = doneToday();
+    const total = (state.workoutStore.history || []).length;
+    const chips = [['low', '😴 Müde'], ['normal', '🙂 Normal'], ['high', '💪 Fit']];
+    const items = wo.items.map(it => {
+      const target = it.type === 'hold' ? `${it.sets} × ${it.hold} Sek` : `${it.sets} × ${it.reps}`;
+      return `<button class="row-card" data-ex="${it.exerciseId}">
+        <div class="row-thumb g-${it.grad}">${it.emoji}</div>
+        <div class="row-main"><div class="row-title">${esc(it.name)}</div>
+          <div class="row-sub">${target} · ${GROUP_LABEL[it.group] || ''}</div></div>
+        <div class="row-chev">›</div></button>`;
+    }).join('');
+    return `
+      <div class="page-head"><h1 class="page-title">Training</h1>
+        <p class="page-sub">${esc(labelFor('fitnessLevel', p.fitnessLevel))} · ${total} Workouts geschafft</p></div>
+      <div class="section-title" style="margin-top:0">Wie fühlst du dich?</div>
+      <div class="chips">${chips.map(([v, l]) => `<button class="chip ${state.energy === v ? 'sel' : ''}" data-energy="${v}">${l}</button>`).join('')}</div>
+      <div class="section-title">Dein Workout heute</div>
+      ${items}
+      ${done
+        ? '<div class="row-card" style="justify-content:center;color:var(--green);font-weight:700">✅ Heute geschafft — stark!</div>'
+        : '<button class="btn btn-green" id="wo-done" style="margin-top:8px">✅ Workout abschließen</button>'}
+      <button class="btn btn-ghost" id="wo-regen" style="margin-top:10px">🔄 Anderes Workout</button>`;
+  }
+
+  function renderExercise() {
+    const ex = L.exerciseById(C, state.exerciseId);
+    const wo = ensureWorkout();
+    const it = wo.items.find(x => x.exerciseId === ex.id);
+    const t = it || L.exerciseTarget(state.workoutStore, ex);
+    const target = ex.type === 'hold'
+      ? `${t.sets} Sätze × ${t.hold} Sekunden halten`
+      : `${t.sets} Sätze × ${t.reps} Wiederholungen`;
+    const next = ex.nextVariantId ? L.exerciseById(C, ex.nextVariantId) : null;
+    app.innerHTML = `<div class="screen">
+      <div class="page-head"><button class="btn btn-ghost" id="ex-back" style="width:auto;padding:8px 14px">← Zurück</button></div>
+      <div class="recipe-hero g-${ex.grad}">${ex.emoji}</div>
+      <h1 class="page-title">${esc(ex.name)}</h1>
+      <p class="page-sub">${GROUP_LABEL[ex.group] || ''} · ${ex.equipment === 'none' ? 'ohne Geräte' : 'wenig Equipment'}</p>
+      <div class="card" style="margin-top:12px"><div class="card-title">🎯 Heute</div><p class="muted">${target}</p></div>
+      <div class="card"><div class="card-title">📋 So geht's</div><p class="muted">${esc(ex.technique)}</p></div>
+      ${next ? `<p class="muted" style="text-align:center">Wird's zu leicht? Nächste Stufe: <b>${esc(next.name)}</b></p>` : ''}
+    </div>`;
+    document.getElementById('ex-back').onclick = () => { state.route = 'training'; render(); };
   }
 
   function renderMehr() {
-    return `<div class="page-head"><h1 class="page-title">Mehr</h1></div>
-      <button class="btn" id="go-ki">🤖 Gesundheits-Coach (KI)</button>
-      <div style="height:12px"></div>
-      <div class="card"><div class="card-title">⚙️ Profil & Plan</div>
-        <p class="muted">Onboarding neu starten erzeugt auch einen neuen Plan.</p>
-        <div style="height:10px"></div>
-        <button class="btn btn-ghost" id="reset-profile">Onboarding neu starten</button></div>
-      <p class="muted" style="text-align:center;margin-top:24px">Gesundheits-App · Phase 1 · © 2026 Marcel Fehse</p>`;
+    const total = (state.workoutStore.history || []).length;
+    const groups = [
+      { head: '🥗 Ernährung', items: [
+        { ic: '🗓️', t: 'Wochenplan', go: 'ernaehrung' },
+        { ic: '🍳', t: 'Rezepte durchstöbern', go: 'ernaehrung' },
+        { ic: '🥫', t: 'Lebensmittel-Datenbank', soon: 'Phase 3' },
+        { ic: '⚖️', t: 'Portionsrechner', hint: 'im Rezept' }
+      ] },
+      { head: '💪 Training', items: [
+        { ic: '🔥', t: 'Heutiges Workout', go: 'training' },
+        { ic: '📚', t: 'Übungs-Bibliothek', go: 'training' },
+        { ic: '📈', t: `Fortschritt (${total} Workouts)`, go: 'training' }
+      ] },
+      { head: '🛒 Einkaufen', items: [
+        { ic: '🧾', t: 'Einkaufsliste', go: 'einkauf' }
+      ] },
+      { head: '📘 Wissen', items: [
+        { ic: '🧬', t: 'Nährstoffe & Kombinationen', soon: 'Phase 4' },
+        { ic: '💊', t: 'Supplemente', soon: 'Phase 4' }
+      ] },
+      { head: '🤖 Coach', items: [
+        { ic: '💬', t: 'Gesundheits-Coach (KI)', go: 'ki' }
+      ] },
+      { head: '⚙️ Einstellungen', items: [
+        { ic: '🔄', t: 'Onboarding neu starten', reset: true }
+      ] }
+    ];
+    const rowsFor = g => g.items.map(it => {
+      const attr = it.go ? `data-go="${it.go}"` : it.reset ? 'id="reset-profile"' : it.soon ? `data-soon="${it.soon}"` : '';
+      const right = it.soon ? `<span class="menu-badge">${it.soon}</span>`
+        : it.hint ? `<span class="menu-badge">${it.hint}</span>` : '<div class="row-chev">›</div>';
+      return `<button class="row-card ${it.soon ? 'soon' : ''}" ${attr}>
+        <div class="row-thumb plain">${it.ic}</div>
+        <div class="row-main"><div class="row-title">${esc(it.t)}</div></div>
+        ${right}</button>`;
+    }).join('');
+    return `<div class="page-head"><h1 class="page-title">Menü</h1><p class="page-sub">Alle Bereiche der App</p></div>
+      ${groups.map(g => `<div class="menu-group"><div class="menu-head">${g.head}</div>${rowsFor(g)}</div>`).join('')}
+      <p class="muted" style="text-align:center;margin-top:8px">Gesundheits-App · Phase 2 · © 2026 Marcel Fehse</p>`;
   }
 
   // ===== KI-Chat =====
@@ -342,11 +453,27 @@
 
   function openRecipe(id) { state.recipeId = id; state.portions = state.plan.servings || state.profile.householdSize || 2; state.recipeBack = state.route; state.route = 'recipe'; render(); }
 
+  function openExercise(id) { state.exerciseId = id; state.route = 'exercise'; render(); }
+
   function bindView() {
     app.querySelectorAll('[data-recipe]').forEach(el => el.onclick = () => openRecipe(el.dataset.recipe));
+    app.querySelectorAll('[data-ex]').forEach(el => el.onclick = () => openExercise(el.dataset.ex));
     app.querySelectorAll('[data-go]').forEach(el => el.onclick = () => { state.route = el.dataset.go; render(); });
-    const ki = document.getElementById('go-ki');
-    if (ki) ki.onclick = () => { state.route = 'ki'; renderChat(); };
+    app.querySelectorAll('[data-soon]').forEach(el => el.onclick = () => alert(`„${el.querySelector('.row-title').textContent}" kommt in ${el.dataset.soon}. 🙂`));
+    const hb = document.getElementById('health-banner');
+    if (hb) hb.onclick = () => { state.route = 'ki'; renderChat(); };
+    const energy = app.querySelectorAll('[data-energy]');
+    energy.forEach(el => el.onclick = () => { state.energy = el.dataset.energy; render(); });
+    const woDone = document.getElementById('wo-done');
+    if (woDone) woDone.onclick = () => {
+      const wo = ensureWorkout();
+      state.workoutStore = L.advanceProgress(C, state.workoutStore, wo.items);
+      save(STORE.workout, state.workoutStore);
+      state.workout = null;
+      render();
+    };
+    const woRegen = document.getElementById('wo-regen');
+    if (woRegen) woRegen.onclick = () => { state.woVariation++; render(); };
     const reset = document.getElementById('reset-profile');
     if (reset) reset.onclick = () => {
       if (confirm('Profil zurücksetzen und Onboarding neu starten?')) {

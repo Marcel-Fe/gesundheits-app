@@ -205,6 +205,30 @@ button { font-family: inherit; cursor: pointer; }
 .nav-item .nav-ic { font-size: 21px; line-height: 1; }
 .nav-item.active { color: var(--warm-b); }
 
+/* ===== Gesundheits-Banner ===== */
+.health-banner { position: relative; overflow: hidden; border: none; color: #fff; width: 100%; text-align: left; display: flex; gap: var(--s3); align-items: center; border-radius: var(--r-lg); padding: var(--s4) var(--s5); margin-bottom: var(--s4); background: linear-gradient(135deg, #34D399, #10B981 60%, #0EA5A4); box-shadow: var(--shadow-sm); transition: transform .12s ease; }
+.health-banner:active { transform: scale(.99); }
+.health-banner::after { content: ""; position: absolute; width: 130px; height: 130px; border-radius: 50%; background: rgba(255,255,255,.14); top: -45px; right: -30px; }
+.health-banner .hb-ic { font-size: 34px; flex: none; position: relative; }
+.health-banner .hb-label { font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; opacity: .92; position: relative; }
+.health-banner .hb-text { font-size: 14px; font-weight: 600; line-height: 1.4; margin-top: 3px; position: relative; }
+
+/* ===== Energie-Chips ===== */
+.chips { display: flex; gap: var(--s2); margin-bottom: var(--s4); }
+.chip { flex: 1; padding: 11px 8px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 700; font-size: 13px; box-shadow: var(--shadow-sm); }
+.chip.sel { background: var(--green); color: #fff; border-color: var(--green); }
+
+/* ===== App-Menü ===== */
+.menu-group { margin-bottom: var(--s5); }
+.menu-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--text-2); margin-bottom: var(--s2); }
+.row-thumb.plain { background: var(--surface-2); font-size: 22px; }
+.row-card.soon { opacity: .62; }
+.menu-badge { font-size: 11px; font-weight: 700; color: var(--text-2); background: var(--surface-2); padding: 3px 9px; border-radius: 999px; }
+
+/* ===== Workout ===== */
+.ex-sub .tag { display: inline-block; background: var(--surface-2); color: var(--text-2); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
+.done-badge { background: var(--green); color: #fff; }
+
 @media (prefers-reduced-motion: reduce) {
   .screen, .splash-content, .stagger > * { animation: none; opacity: 1; transform: none; }
   .splash-overlay { transition: none; }

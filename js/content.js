@@ -96,7 +96,57 @@
       ['Joghurt einfüllen.', 'Beeren, Haferflocken, Nüsse darüber.'])
   ];
 
-  const GCONTENT = { foods, recipes };
+  // ===== Übungen (Phase 2: Home-Workout ohne Geräte) =====
+  // group: push | legs | core | cardio | back ; type: strength | hold | cardio | mobility
+  const E = (id, name, emoji, grad, group, equipment, level, type, reps, sets, hold, technique, nextVariantId) =>
+    ({ id, name, emoji, grad, group, equipment, level, type, reps, sets, hold, technique, nextVariantId: nextVariantId || null });
+
+  const exercises = [
+    // Push
+    E('knee_pushups', 'Knie-Liegestütze', '🤸', 'sunrise', 'push', 'none', 'beginner', 'strength', 10, 3, null,
+      'Auf den Knien abstützen, Körper gerade. Langsam absenken, kraftvoll hochdrücken.', 'pushups'),
+    E('pushups', 'Liegestütze', '💪', 'terracotta', 'push', 'none', 'intermediate', 'strength', 12, 3, null,
+      'Hände schulterbreit, Körper bildet eine Linie. Bis kurz über den Boden absenken.', 'diamond_pushups'),
+    E('diamond_pushups', 'Diamant-Liegestütze', '🔥', 'terracotta', 'push', 'none', 'advanced', 'strength', 10, 3, null,
+      'Hände unter der Brust zu einem Dreieck. Trizeps-betont absenken.', null),
+    E('pike_pushups', 'Pike-Liegestütze', '🔺', 'amber', 'push', 'none', 'intermediate', 'strength', 8, 3, null,
+      'Hüfte hoch (umgekehrtes V), Kopf Richtung Boden senken — trainiert die Schultern.', null),
+    E('chair_dips', 'Trizeps-Dips (Stuhl)', '🪑', 'amber', 'push', 'minimal', 'beginner', 'strength', 10, 3, null,
+      'Hände auf eine Stuhlkante, Körper absenken, mit den Armen hochdrücken.', null),
+    // Legs
+    E('squats', 'Kniebeugen', '🦵', 'sage', 'legs', 'none', 'beginner', 'strength', 15, 3, null,
+      'Füße schulterbreit, Po nach hinten, Knie über den Füßen. Tief gehen, dann hoch.', 'jump_squats'),
+    E('jump_squats', 'Sprung-Kniebeugen', '⚡', 'terracotta', 'legs', 'none', 'intermediate', 'cardio', 12, 3, null,
+      'Aus der Kniebeuge kraftvoll abspringen, weich landen.', null),
+    E('lunges', 'Ausfallschritte', '🚶', 'sage', 'legs', 'none', 'beginner', 'strength', 12, 3, null,
+      'Großer Schritt nach vorn, beide Knie 90°. Pro Bein zählen.', null),
+    E('glute_bridge', 'Beckenheben', '🌉', 'peach', 'legs', 'none', 'beginner', 'strength', 15, 3, null,
+      'Auf dem Rücken, Füße aufgestellt, Becken hochdrücken, Po anspannen.', null),
+    E('wall_sit', 'Wandsitz', '🧱', 'sage', 'legs', 'none', 'beginner', 'hold', null, 3, 30,
+      'Rücken an die Wand, Oberschenkel waagerecht — halten.', null),
+    E('calf_raises', 'Wadenheben', '🦶', 'peach', 'legs', 'none', 'beginner', 'strength', 20, 3, null,
+      'Auf die Zehenspitzen hoch, langsam absenken.', null),
+    // Core
+    E('plank', 'Unterarmstütz (Plank)', '🪵', 'amber', 'core', 'none', 'beginner', 'hold', null, 3, 30,
+      'Unterarme und Zehen, Körper bildet eine gerade Linie. Bauch anspannen, halten.', null),
+    E('crunches', 'Crunches', '🌀', 'sunrise', 'core', 'none', 'beginner', 'strength', 15, 3, null,
+      'Auf dem Rücken, Schultern leicht anheben, Bauch anspannen.', null),
+    E('mountain_climbers', 'Mountain Climbers', '⛰️', 'terracotta', 'core', 'none', 'intermediate', 'cardio', 20, 3, null,
+      'Im Liegestütz die Knie abwechselnd zur Brust ziehen — zügig.', null),
+    E('bird_dog', 'Bird-Dog', '🐦', 'sage', 'core', 'none', 'beginner', 'mobility', 12, 3, null,
+      'Im Vierfüßler gegenüberliegenden Arm + Bein strecken, kurz halten, wechseln.', null),
+    E('superman', 'Superman', '🦸', 'sunrise', 'back', 'none', 'beginner', 'strength', 12, 3, null,
+      'Bäuchlings Arme und Beine anheben, kurz halten — stärkt den unteren Rücken.', null),
+    // Cardio
+    E('jumping_jacks', 'Hampelmänner', '🤾', 'peach', 'cardio', 'none', 'beginner', 'cardio', 30, 3, null,
+      'Arme und Beine gleichzeitig auf und zu — gleichmäßiger Rhythmus.', null),
+    E('high_knees', 'Knieheben', '🏃', 'amber', 'cardio', 'none', 'beginner', 'cardio', 30, 3, null,
+      'Auf der Stelle laufen, Knie hoch zur Hüfte.', null),
+    E('burpees', 'Burpees', '💥', 'terracotta', 'cardio', 'none', 'advanced', 'cardio', 10, 3, null,
+      'Kniebeuge → Liegestütz → Strecksprung. Ganzkörper, intensiv.', null)
+  ];
+
+  const GCONTENT = { foods, recipes, exercises };
   if (typeof window !== 'undefined') window.GCONTENT = GCONTENT;
   if (typeof module !== 'undefined' && module.exports) module.exports = GCONTENT;
 })(typeof window !== 'undefined' ? window : globalThis);

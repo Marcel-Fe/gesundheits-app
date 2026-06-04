@@ -63,5 +63,35 @@ ok('1500 g → 1.5 kg', L.formatAmount(1500, 'g') === '1.5 kg');
 ok('300 ml bleibt ml', L.formatAmount(300, 'ml') === '300 ml');
 ok('2 Stück', L.formatAmount(2, 'stueck') === '2 Stück');
 
+// 9) Training: jede nextVariantId existiert
+let variantsOk = true;
+for (const e of content.exercises) if (e.nextVariantId && !L.exerciseById(content, e.nextVariantId)) { variantsOk = false; console.error('  Variante fehlt:', e.nextVariantId); }
+ok('Alle Übungs-Varianten existieren', variantsOk);
+
+// 10) Workout-Größe skaliert mit Zeit
+ok('5 Min → 3 Übungen', L.workoutSize(5) === 3);
+ok('35 Min → 8 Übungen (gedeckelt)', L.workoutSize(35) === 8);
+
+// 11) Generator: Anzahl passt + Ganzkörper (≥3 Muskelgruppen) + Anfänger ohne Advanced
+const wo = L.generateWorkout(content, { fitnessLevel: 'beginner', goal: 'health', timePerDay: 20 }, 'normal', null);
+ok('Workout hat erwartete Anzahl', wo.items.length === L.workoutSize(20));
+ok('Workout deckt ≥ 3 Muskelgruppen ab', new Set(wo.items.map(i => i.group)).size >= 3);
+let noAdvanced = true;
+for (const it of wo.items) { const e = L.exerciseById(content, it.exerciseId); if (e.level === 'advanced') noAdvanced = false; }
+ok('Anfänger-Workout ohne Advanced-Übungen', noAdvanced);
+
+// 12) Energie niedrig → weniger Sätze als normal
+const woLow = L.generateWorkout(content, { fitnessLevel: 'intermediate', goal: 'muscle', timePerDay: 20 }, 'low', null);
+const woNorm = L.generateWorkout(content, { fitnessLevel: 'intermediate', goal: 'muscle', timePerDay: 20 }, 'normal', null);
+ok('Niedrige Energie → weniger/gleich Sätze', woLow.items[0].sets <= woNorm.items[0].sets && woLow.items[0].sets < woNorm.items[0].sets + 1 && woLow.items[0].sets === woNorm.items[0].sets - 1);
+
+// 13) Progression: Abschließen erhöht Wiederholungen
+const store0 = { progress: {}, history: [] };
+const repItem = wo.items.find(i => i.type !== 'hold');
+const store1 = L.advanceProgress(content, store0, [repItem]);
+const exObj = L.exerciseById(content, repItem.exerciseId);
+ok('Abschließen erhöht Wdh. um 2', store1.progress[repItem.exerciseId].reps === exObj.reps + 2);
+ok('History bekommt einen Eintrag', store1.history.length === 1);
+
 console.log(`\n${fail === 0 ? '✅' : '❌'} Tests: ${pass} grün, ${fail} rot`);
 process.exit(fail === 0 ? 0 : 1);

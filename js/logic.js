@@ -132,9 +132,77 @@
     return a >= 1000 ? `${(a / 1000).toFixed(a % 1000 ? 1 : 0)} kg` : `${Math.round(a)} g`;
   }
 
+  // ===== Training (Phase 2) =====
+  const exerciseById = (content, id) => content.exercises.find(e => e.id === id);
+  const LEVEL = { beginner: 1, intermediate: 2, advanced: 3 };
+
+  // Übungsanzahl aus Zeitbudget (5–45 Min → 3–8 Übungen)
+  const workoutSize = timePerDay => Math.max(3, Math.min(8, Math.round(timePerDay / 5) + 2));
+
+  // aktueller Ziel-Stand einer Übung (Defaults + gespeicherte Progression)
+  function exerciseTarget(store, ex) {
+    const p = (store && store.progress && store.progress[ex.id]) || {};
+    return {
+      reps: ex.type === 'hold' ? null : (p.reps != null ? p.reps : ex.reps),
+      hold: ex.type === 'hold' ? (p.hold != null ? p.hold : ex.hold) : null,
+      sets: p.sets != null ? p.sets : ex.sets
+    };
+  }
+
+  function generateWorkout(content, profile, energy, store, variation) {
+    store = store || { progress: {}, history: [] };
+    const v = variation || 0;
+    const userRank = LEVEL[profile.fitnessLevel] || 1;
+    let usable = content.exercises.filter(e => (e.equipment === 'none' || e.equipment === 'minimal') && LEVEL[e.level] <= userRank);
+    if (!usable.length) usable = content.exercises.filter(e => LEVEL[e.level] === 1);
+    const byGroup = g => usable.filter(e => e.group === g);
+
+    const n = workoutSize(profile.timePerDay);
+    const cardioFirst = ['lose', 'health', 'family'].includes(profile.goal);
+    const order = cardioFirst ? ['legs', 'push', 'core', 'cardio', 'back'] : ['legs', 'push', 'core', 'back', 'cardio'];
+
+    const chosen = [], used = {};
+    const take = g => { const list = byGroup(g); if (!list.length) return; const i = used[g] != null ? used[g] : v; const ex = list[i % list.length]; used[g] = i + 1; if (!chosen.find(c => c.id === ex.id)) chosen.push(ex); };
+    for (const g of order) { if (chosen.length >= n) break; take(g); }
+    const groups = ['legs', 'push', 'core', 'cardio', 'back'];
+    let gi = 0, guard = 0;
+    while (chosen.length < n && guard < 100) { take(groups[gi++ % groups.length]); guard++; }
+
+    const setBonus = profile.goal === 'muscle' ? 1 : 0;
+    const energyDelta = energy === 'low' ? -1 : 0;
+    const items = chosen.slice(0, n).map(ex => {
+      const t = exerciseTarget(store, ex);
+      return { exerciseId: ex.id, name: ex.name, emoji: ex.emoji, grad: ex.grad, group: ex.group, type: ex.type, sets: Math.max(1, t.sets + setBonus + energyDelta), reps: t.reps, hold: t.hold };
+    });
+    return { date: startOfToday(), energy: energy || 'normal', items };
+  }
+
+  // nach abgeschlossenem Workout: Wiederholungen/Haltezeit hochzählen, dann Sätze
+  function advanceProgress(content, store, items) {
+    const prog = { ...((store && store.progress) || {}) };
+    for (const it of items) {
+      const ex = exerciseById(content, it.exerciseId);
+      if (!ex) continue;
+      const cur = prog[ex.id] || {};
+      if (ex.type === 'hold') {
+        let hold = (cur.hold != null ? cur.hold : ex.hold) + 10;
+        let sets = cur.sets != null ? cur.sets : ex.sets;
+        if (hold > 60) { hold = ex.hold; sets = Math.min(sets + 1, 4); }
+        prog[ex.id] = { hold, sets };
+      } else {
+        let reps = (cur.reps != null ? cur.reps : ex.reps) + 2;
+        let sets = cur.sets != null ? cur.sets : ex.sets;
+        if (reps > ex.reps + 8) { reps = ex.reps; sets = Math.min(sets + 1, 4); }
+        prog[ex.id] = { reps, sets };
+      }
+    }
+    return { progress: prog, history: [...((store && store.history) || []), { date: Date.now(), count: items.length }] };
+  }
+
   const GLOGIC = {
     foodById, gramsOf, costOf, recipeNutrients, recipeCost, scaleIngredients,
-    budgetMax, dietAllowed, generateWeek, todayIndex, aggregateShopping, formatAmount
+    budgetMax, dietAllowed, generateWeek, todayIndex, aggregateShopping, formatAmount,
+    exerciseById, workoutSize, exerciseTarget, generateWorkout, advanceProgress
   };
   if (typeof window !== 'undefined') window.GLOGIC = GLOGIC;
   if (typeof module !== 'undefined' && module.exports) module.exports = GLOGIC;
