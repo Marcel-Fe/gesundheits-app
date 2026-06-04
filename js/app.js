@@ -214,14 +214,19 @@
     save(STORE.chat, state.chat);
     renderChat();
     try {
+      const p = state.profile;
+      const profileNote = p ? `\n\nKontext zum Nutzer: Ziel=${p.goal}, Ernährung=${p.dietType}, Budget=${p.budget}, Zeit/Tag=${p.timePerDay}min, Fitness=${p.fitnessLevel}, Haushalt=${p.householdSize}.` : '';
       const res = await fetch(D.kiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: state.chat, profile: state.profile })
+        body: JSON.stringify({
+          messages: state.chat.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', text: m.content })),
+          systemInstruction: D.kiSystemPrompt + profileNote
+        })
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-      const reply = data.reply || data.text || 'Keine Antwort erhalten.';
+      const reply = data.text || data.reply || 'Keine Antwort erhalten.';
       state.chat.push({ role: 'assistant', content: reply });
     } catch (e) {
       state.chat.push({ role: 'assistant', content: '⚠️ Verbindung zur KI fehlgeschlagen. Bitte später nochmal versuchen.' });
