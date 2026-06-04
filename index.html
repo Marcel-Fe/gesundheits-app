@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<!--
+  Gesundheits-App — © 2026 Marcel Fehse. Alle Rechte vorbehalten / All rights reserved.
+  Kein Open Source. Code und Inhalte dürfen ohne schriftliche Genehmigung des
+  Urhebers nicht kopiert, weiterverwendet oder verbreitet werden.
+-->
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Gesundheits-App — Ernährung, Training & Einkauf für Familien</title>
+  <meta name="description" content="Günstige, einfache Ernährung, Home-Workouts ohne Geräte, Portionsrechner mit automatischer Einkaufsliste und wissenschaftliche Nährstoff-Aufklärung — für die ganze Familie." />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#16A34A" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- iOS / Apple -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Gesund" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+
+  <link rel="stylesheet" href="css/styles.css?v=1" />
+</head>
+<body>
+
+  <!-- ===== Splash-Screen ===== -->
+  <div id="splash" class="splash-overlay">
+    <div class="splash-content">
+      <div class="splash-logo-wrap">
+        <svg class="splash-logo-svg" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="sLg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#4ADE80"/>
+              <stop offset="100%" stop-color="#16A34A"/>
+            </linearGradient>
+          </defs>
+          <rect x="2" y="2" width="56" height="56" rx="16" fill="url(#sLg)"/>
+          <rect x="26" y="14" width="8" height="32" rx="3" fill="#fff"/>
+          <rect x="14" y="26" width="32" height="8" rx="3" fill="#fff"/>
+        </svg>
+      </div>
+      <div class="splash-title">Gesundheits-App</div>
+      <div class="splash-sub">für die ganze Familie</div>
+    </div>
+  </div>
+
+  <!-- ===== App-Wurzel ===== -->
+  <div id="app" aria-live="polite"></div>
+
+  <!-- ===== Bottom-Navigation ===== -->
+  <nav id="bottom-nav" class="bottom-nav" hidden></nav>
+
+  <script src="js/data.js?v=1"></script>
+  <script src="js/app.js?v=1"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW-Registrierung fehlgeschlagen:', err));
+      });
+    }
+  </script>
+</body>
+</html>
