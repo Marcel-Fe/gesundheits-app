@@ -146,7 +146,42 @@
       'Kniebeuge → Liegestütz → Strecksprung. Ganzkörper, intensiv.', null)
   ];
 
-  const GCONTENT = { foods, recipes, exercises };
+  // ===== Kuratierte Trainings-Sessions (schön, einfach, motivierend) =====
+  // goals: lose | muscle | health | family ; items verweisen auf Übungs-IDs
+  const si = (exerciseId, sets, reps, hold) => ({ exerciseId, sets, reps: reps || null, hold: hold || null });
+  const S = (id, name, emoji, grad, goals, minutes, level, blurb, items) => ({ id, name, emoji, grad, goals, minutes, level, blurb, items });
+
+  const sessions = [
+    S('gentle_start', 'Sanfter Einstieg', '🌱', 'sage', ['health', 'family'], 10, 'beginner',
+      'Ruhig starten – ideal für den Wiedereinstieg ohne Überforderung.',
+      [si('knee_pushups', 3, 8), si('squats', 3, 12), si('glute_bridge', 3, 12), si('bird_dog', 3, 10), si('wall_sit', 3, null, 20)]),
+    S('morning_energy', 'Energie am Morgen', '🌅', 'sunrise', ['health', 'family'], 10, 'beginner',
+      'Wach werden und mit Schwung in den Tag starten.',
+      [si('jumping_jacks', 3, 30), si('squats', 3, 12), si('high_knees', 3, 30), si('glute_bridge', 3, 12)]),
+    S('fatburn_hiit', 'Fettverbrennung HIIT', '🔥', 'terracotta', ['lose'], 20, 'intermediate',
+      'Intensiv und kurz – kurbelt den Kalorienverbrauch ordentlich an.',
+      [si('jumping_jacks', 4, 30), si('jump_squats', 4, 12), si('mountain_climbers', 4, 20), si('high_knees', 4, 30), si('burpees', 3, 8)]),
+    S('cardio_blast', 'Cardio Kickstart', '⚡', 'amber', ['lose', 'health'], 15, 'beginner',
+      'Herz-Kreislauf sanft in Fahrt bringen – gut für Ausdauer & Abnehmen.',
+      [si('jumping_jacks', 3, 30), si('high_knees', 3, 30), si('mountain_climbers', 3, 20), si('jump_squats', 3, 12)]),
+    S('strength_full', 'Kraft Ganzkörper', '💪', 'terracotta', ['muscle'], 30, 'intermediate',
+      'Ganzkörper-Kraft mit Steigerung – baut Muskeln zu Hause auf.',
+      [si('pushups', 4, 12), si('squats', 4, 15), si('lunges', 4, 12), si('pike_pushups', 3, 8), si('superman', 3, 12), si('plank', 3, null, 40)]),
+    S('upper_body', 'Oberkörper Kraft', '🦾', 'amber', ['muscle'], 15, 'intermediate',
+      'Brust, Schultern, Arme und Rücken gezielt fordern.',
+      [si('pushups', 4, 12), si('pike_pushups', 3, 10), si('chair_dips', 3, 10), si('superman', 3, 12)]),
+    S('legs_glutes', 'Beine & Po', '🍑', 'peach', ['muscle', 'health'], 15, 'beginner',
+      'Kräftige Beine und ein starker Po – spürbar nach wenigen Einheiten.',
+      [si('squats', 4, 15), si('lunges', 4, 12), si('glute_bridge', 4, 15), si('wall_sit', 3, null, 30), si('calf_raises', 3, 20)]),
+    S('core_special', 'Bauch-Spezial', '🌀', 'sunrise', ['lose', 'health'], 12, 'beginner',
+      'Fokus auf die Körpermitte – für einen stabilen Rumpf.',
+      [si('crunches', 4, 15), si('plank', 3, null, 30), si('mountain_climbers', 3, 20), si('bird_dog', 3, 12)]),
+    S('mobility', 'Beweglichkeit & Entspannung', '🧘', 'sage', ['health', 'family'], 10, 'beginner',
+      'Locker werden und Verspannungen lösen – auch als Ausgleich zum Sitzen.',
+      [si('bird_dog', 3, 12), si('glute_bridge', 3, 12), si('wall_sit', 3, null, 20), si('plank', 3, null, 20)])
+  ];
+
+  const GCONTENT = { foods, recipes, exercises, sessions };
   if (typeof window !== 'undefined') window.GCONTENT = GCONTENT;
   if (typeof module !== 'undefined' && module.exports) module.exports = GCONTENT;
 })(typeof window !== 'undefined' ? window : globalThis);

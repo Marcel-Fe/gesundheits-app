@@ -85,5 +85,43 @@ Strenge Regeln:
 - Nur WISSENSCHAFTLICH belegte Aussagen (Orientierung: DGE, EFSA, WHO). KEINE Homöopathie, keine Wunder-/Heilversprechen, keine Esoterik.
 - Bei Krankheits-Symptomen, Schmerzen, Medikamenten oder Schwangerschaft: zuerst klar zum Arzt/zur Ärztin verweisen, dann allgemeine Infos.
 - Keine Diagnosen, keine Medikamenten-Dosierungen.
-- Praktisch und alltagstauglich bleiben; konkrete, günstige Lebensmittel nennen.`
+- Praktisch und alltagstauglich bleiben; konkrete, günstige Lebensmittel nennen.`,
+
+  // Motivationssprüche — wechseln stündlich (Index = Stunde des Tages)
+  quotes: [
+    'Jede Bewegung zählt – auch die kleine.',
+    'Gesund wird man nicht an einem Tag, sondern jeden Tag ein bisschen.',
+    'Dein Körper kann fast alles. Es ist dein Kopf, den du überzeugen musst.',
+    'Fang an, wo du stehst. Nutze, was du hast. Tu, was du kannst.',
+    'Ein Glas Wasser ist auch ein Anfang.',
+    'Fortschritt ist Fortschritt – egal wie klein.',
+    'Heute ein bisschen besser als gestern.',
+    'Iss bunt, lebe satt.',
+    'Die beste Zeit war gestern. Die zweitbeste ist jetzt.',
+    'Kleine Schritte führen zu großen Veränderungen.',
+    'Dein zukünftiges Ich dankt dir für heute.',
+    'Bewegung ist die beste Medizin, die nichts kostet.',
+    'Nicht perfekt sein – einfach dranbleiben.',
+    'Selbstfürsorge ist keine Belohnung, sondern Grundbedarf.',
+    'Ein kurzer Spaziergang ist besser als kein Spaziergang.',
+    'Erfolg ist die Summe vieler kleiner Tage.',
+    'Höre auf deinen Körper – er weiß mehr, als du denkst.',
+    'Gesunde Ernährung ist Selbstrespekt auf dem Teller.',
+    'Du musst nicht groß anfangen, aber du musst anfangen.',
+    'Stark wird man durch Wiederholung, nicht durch Wunder.',
+    'Pausen gehören dazu – Erholung ist Teil des Trainings.',
+    'Lächle – auch das ist gut fürs Herz.',
+    'Heute zählt. Morgen baut darauf auf.',
+    'Dein Tempo ist genau das richtige Tempo.'
+  ],
+
+  // WMO-Wettercodes → Symbol, Text, drinnen/draußen-Tipp
+  weatherCodes: {
+    clear: { emoji: '☀️', label: 'klar' },
+    cloud: { emoji: '⛅', label: 'bewölkt' },
+    fog: { emoji: '🌫️', label: 'neblig' },
+    rain: { emoji: '🌧️', label: 'Regen' },
+    snow: { emoji: '❄️', label: 'Schnee' },
+    storm: { emoji: '⛈️', label: 'Gewitter' }
+  }
 };

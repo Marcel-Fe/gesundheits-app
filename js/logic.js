@@ -199,10 +199,21 @@
     return { progress: prog, history: [...((store && store.history) || []), { date: Date.now(), count: items.length }] };
   }
 
+  // Sessions + Matching (Phase 2+)
+  const sessionById = (content, id) => (content.sessions || []).find(s => s.id === id);
+  // Empfohlene Sessions zum Ziel; passende zuerst, Rest danach
+  function recommendedSessions(content, goal) {
+    const all = content.sessions || [];
+    const fit = all.filter(s => s.goals.includes(goal));
+    const rest = all.filter(s => !s.goals.includes(goal));
+    return { fit, rest, ordered: [...fit, ...rest] };
+  }
+
   const GLOGIC = {
     foodById, gramsOf, costOf, recipeNutrients, recipeCost, scaleIngredients,
     budgetMax, dietAllowed, generateWeek, todayIndex, aggregateShopping, formatAmount,
-    exerciseById, workoutSize, exerciseTarget, generateWorkout, advanceProgress
+    exerciseById, workoutSize, exerciseTarget, generateWorkout, advanceProgress,
+    sessionById, recommendedSessions
   };
   if (typeof window !== 'undefined') window.GLOGIC = GLOGIC;
   if (typeof module !== 'undefined' && module.exports) module.exports = GLOGIC;

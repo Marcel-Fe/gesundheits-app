@@ -10,6 +10,7 @@
   const D = window.GDATA;
   const C = window.GCONTENT;
   const L = window.GLOGIC;
+  const K = window.GKNOW;
   const STORE = { profile: 'gapp.profile', chat: 'gapp.chat', plan: 'gapp.plan', shop: 'gapp.shop', workout: 'gapp.workout' };
 
   const load = (key, fb) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fb; } catch { return fb; } };
@@ -25,7 +26,17 @@
     onbStep: 0, onbDraft: {},
     recipeId: null, recipeBack: 'ernaehrung', portions: 2,
     workoutStore: load(STORE.workout, { progress: {}, history: [] }),
-    workout: null, energy: 'normal', exerciseId: null, woVariation: 0
+    workout: null, energy: 'normal', exerciseId: null, woVariation: 0,
+    vitaminId: null, sessionId: null,
+    voiceOut: load('gapp.voice', false), listening: false
+  };
+  let recog = null;
+
+  const GOAL_MATCH = {
+    lose: 'Zum Abnehmen zählt vor allem Bewegung: viel Cardio/HIIT für den Kalorienverbrauch, dazu etwas Kraft, um Muskeln zu erhalten.',
+    muscle: 'Für Muskelaufbau sind Kraftübungen mit Steigerung wichtig (3–4 Sätze), dazu genug Eiweiß und Erholung.',
+    health: 'Für die Gesundheit ist ein Mix ideal: Kraft, Cardio und Beweglichkeit – lieber regelmäßig und moderat als selten und hart.',
+    family: 'Für die Familie eignen sich kurze, einfache Einheiten, die Spaß machen und bei denen alle mitmachen können.'
   };
 
   const HEALTH_TIPS = [
@@ -38,6 +49,7 @@
     { ic: '☀️', t: 'Vitamin D ist im Winter oft knapp. Sonnenlicht hilft; ein Supplement nur faktenbasiert und in Maßen.' }
   ];
   const GROUP_LABEL = { push: 'Oberkörper', legs: 'Beine', core: 'Rumpf', cardio: 'Cardio', back: 'Rücken' };
+  const LEVEL_LABEL = { beginner: 'Anfänger', intermediate: 'Geübt', advanced: 'Fortgeschritten' };
 
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const mdLite = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -54,6 +66,9 @@
     if (state.route === 'ki') { renderChat(); return; }
     if (state.route === 'recipe') { renderRecipe(); nav.hidden = false; renderNav(); return; }
     if (state.route === 'exercise') { renderExercise(); nav.hidden = false; renderNav(); return; }
+    if (state.route === 'session') { renderSession(); nav.hidden = false; renderNav(); return; }
+    if (state.route === 'wissen') { app.innerHTML = `<div class="screen">${renderWissen()}</div>`; nav.hidden = false; renderNav(); bindView(); return; }
+    if (state.route === 'vitamin') { renderVitamin(); nav.hidden = false; renderNav(); return; }
     nav.hidden = false;
     renderNav();
     const view = { dashboard: renderDashboard, ernaehrung: renderErnaehrung, training: renderTraining, einkauf: renderEinkauf, mehr: renderMehr }[state.route] || renderDashboard;
@@ -130,6 +145,43 @@
   }
   const doneToday = () => (state.workoutStore.history || []).some(h => new Date(h.date).setHours(0, 0, 0, 0) === new Date().setHours(0, 0, 0, 0));
   const tipOfDay = () => HEALTH_TIPS[Math.floor((Date.now() / 86400000)) % HEALTH_TIPS.length];
+  const quoteOfHour = () => D.quotes[new Date().getHours() % D.quotes.length];
+
+  // ===== Wetter (Open-Meteo, kostenlos, kein Key) =====
+  function weatherCategory(code) {
+    if (code === 0) return 'clear';
+    if (code <= 3) return 'cloud';
+    if (code === 45 || code === 48) return 'fog';
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rain';
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snow';
+    if (code >= 95) return 'storm';
+    return 'cloud';
+  }
+  function weatherText(code, temp) {
+    const cat = weatherCategory(code);
+    const w = D.weatherCodes[cat] || D.weatherCodes.cloud;
+    const outdoor = (cat === 'clear' || cat === 'cloud') && temp >= 8;
+    const tip = outdoor ? 'Perfekt für Bewegung an der frischen Luft 🚶' : 'Ideal für ein Home-Workout drinnen 💪';
+    return `${w.emoji} ${temp}° · ${tip}`;
+  }
+  const weatherFallback = () => 'Egal ob drinnen oder draußen – jede Bewegung tut dir heute gut. 💪';
+
+  function loadWeather() {
+    const el = document.getElementById('greet-weather');
+    if (!el) return;
+    try { const c = JSON.parse(localStorage.getItem('gapp.weather') || 'null'); if (c && Date.now() - c.ts < 3600000) { el.textContent = c.text; return; } } catch {}
+    if (!navigator.geolocation) { el.textContent = weatherFallback(); return; }
+    navigator.geolocation.getCurrentPosition(async pos => {
+      try {
+        const { latitude, longitude } = pos.coords;
+        const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude.toFixed(2)}&longitude=${longitude.toFixed(2)}&current=temperature_2m,weather_code`);
+        const j = await r.json();
+        const text = weatherText(j.current.weather_code, Math.round(j.current.temperature_2m));
+        el.textContent = text;
+        localStorage.setItem('gapp.weather', JSON.stringify({ ts: Date.now(), text }));
+      } catch { el.textContent = weatherFallback(); }
+    }, () => { el.textContent = weatherFallback(); }, { timeout: 8000, maximumAge: 1800000 });
+  }
 
   function renderDashboard() {
     const p = state.profile;
@@ -145,7 +197,8 @@
     return `<div class="stagger">
       <div class="greet" ${di()}>
         <h1 class="greet-hi">${greeting()}! 👋</h1>
-        <p class="greet-sub">Dein Tag für „${esc(labelFor('goal', p.goal))}" — einfach, günstig, machbar.</p>
+        <p class="greet-weather" id="greet-weather">📍 Wetter & Bewegungstipp laden…</p>
+        <p class="greet-quote">„${esc(quoteOfHour())}"</p>
       </div>
 
       <div class="stats" ${di()}>
@@ -274,6 +327,74 @@
     };
   }
 
+  // ===== Trainings-Session (Detail/Player) =====
+  function renderSession() {
+    const s = L.sessionById(C, state.sessionId);
+    const items = s.items.map(it => {
+      const ex = L.exerciseById(C, it.exerciseId);
+      const target = it.hold ? `${it.sets} × ${it.hold} Sek` : `${it.sets} × ${it.reps}`;
+      return `<button class="row-card" data-ex="${ex.id}">
+        <div class="row-thumb g-${ex.grad}">${ex.emoji}</div>
+        <div class="row-main"><div class="row-title">${esc(ex.name)}</div><div class="row-sub">${target} · ${GROUP_LABEL[ex.group] || ''}</div></div>
+        <div class="row-chev">›</div></button>`;
+    }).join('');
+    app.innerHTML = `<div class="screen">
+      <div class="page-head"><button class="btn btn-ghost" id="ses-back" style="width:auto;padding:8px 14px">← Zurück</button></div>
+      <div class="recipe-hero g-${s.grad}">${s.emoji}</div>
+      <h1 class="page-title">${esc(s.name)}</h1>
+      <p class="page-sub">⏱️ ${s.minutes} Min · ${esc(LEVEL_LABEL[s.level] || '')} · ${s.items.length} Übungen</p>
+      <p class="muted" style="margin:8px 0 16px">${esc(s.blurb)}</p>
+      <div class="section-title" style="margin-top:0">Übungen</div>
+      ${items}
+      <button class="btn btn-green" id="ses-done" style="margin-top:8px">✅ Session abschließen</button>
+    </div>`;
+    document.getElementById('ses-back').onclick = () => { state.route = 'training'; render(); };
+    app.querySelectorAll('[data-ex]').forEach(el => el.onclick = () => openExercise(el.dataset.ex));
+    document.getElementById('ses-done').onclick = () => {
+      state.workoutStore = { progress: state.workoutStore.progress || {}, history: [...(state.workoutStore.history || []), { date: Date.now(), count: s.items.length, session: s.id }] };
+      save(STORE.workout, state.workoutStore);
+      state.workout = null;
+      state.route = 'training'; render();
+    };
+  }
+
+  // ===== Wissen: Vitamine & Nährstoffe =====
+  function renderWissen() {
+    const heads = { Vitamin: '🔆 Vitamine', Mineralstoff: '⛏️ Mineralstoffe', 'Fettsäure': '🐟 Fettsäuren', Sonstiges: '🌿 Weitere Nährstoffe' };
+    let html = '';
+    for (const ty of Object.keys(heads)) {
+      const list = K.nutrients.filter(n => n.type === ty);
+      if (!list.length) continue;
+      html += `<div class="menu-head" style="margin-top:18px">${heads[ty]}</div>`;
+      html += list.map(n => `<button class="row-card" data-vit="${n.id}">
+        <div class="row-thumb g-${n.grad}">${n.emoji}</div>
+        <div class="row-main"><div class="row-title">${esc(n.name)}</div><div class="row-sub">${esc(n.short)}</div></div>
+        <div class="row-chev">›</div></button>`).join('');
+    }
+    return `<div class="page-head">
+        <button class="btn btn-ghost" id="wissen-back" style="width:auto;padding:8px 14px">← Zurück</button>
+        <h1 class="page-title" style="margin-top:12px">Vitamine & Nährstoffe</h1>
+        <p class="page-sub">Einfach erklärt, faktenbasiert</p></div>
+      <div class="warn-banner">Allgemeine Infos, keine medizinische Beratung. Bei Beschwerden bitte Arzt/Ärztin fragen.</div>
+      ${html}`;
+  }
+
+  function renderVitamin() {
+    const n = K.nutrients.find(x => x.id === state.vitaminId);
+    app.innerHTML = `<div class="screen">
+      <div class="page-head"><button class="btn btn-ghost" id="vit-back" style="width:auto;padding:8px 14px">← Zurück</button></div>
+      <div class="recipe-hero g-${n.grad}">${n.emoji}</div>
+      <h1 class="page-title">${esc(n.name)}</h1>
+      <p class="page-sub">${esc(n.type)} · ${esc(n.short)}</p>
+      <div class="card" style="margin-top:12px"><div class="card-title">🧠 Wofür dein Körper es braucht</div><p class="muted">${esc(n.role)}</p></div>
+      <div class="card"><div class="card-title">🥗 Gute (günstige) Quellen</div><div>${n.sources.map(s => `<span class="pill" style="background:var(--surface-2);color:var(--text-2)">${esc(s)}</span>`).join('')}</div></div>
+      <div class="card"><div class="card-title">📏 Tagesbedarf (Richtwert)</div><p class="muted">${esc(n.need)}</p></div>
+      <div class="card"><div class="card-title">⚠️ Bei Mangel</div><p class="muted">${esc(n.deficiency)}</p></div>
+      <div class="card"><div class="card-title">💡 Tipps</div><ul class="steps-ol" style="list-style:disc">${n.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>
+    </div>`;
+    document.getElementById('vit-back').onclick = () => { state.route = 'wissen'; render(); };
+  }
+
   // ===== Einkaufsliste =====
   function renderEinkauf() {
     const rows = L.aggregateShopping(C, state.shop.sources);
@@ -302,11 +423,25 @@
       <button class="btn btn-ghost" id="shop-clear" style="margin-top:20px">Liste leeren</button>`;
   }
 
+  function sessionCard(s) {
+    return `<button class="meal-card" data-session="${s.id}">
+      <div class="meal-thumb g-${s.grad}">${s.emoji}</div>
+      <div class="meal-body"><div class="meal-slot">${s.minutes} Min</div><div class="meal-name">${esc(s.name)}</div><div class="meal-kcal">${s.items.length} Übungen · ${esc(LEVEL_LABEL[s.level] || '')}</div></div>
+    </button>`;
+  }
+  function sessionRow(s) {
+    return `<button class="row-card" data-session="${s.id}">
+      <div class="row-thumb g-${s.grad}">${s.emoji}</div>
+      <div class="row-main"><div class="row-title">${esc(s.name)}</div><div class="row-sub">⏱️ ${s.minutes} Min · ${s.items.length} Übungen · ${esc(LEVEL_LABEL[s.level] || '')}</div></div>
+      <div class="row-chev">›</div></button>`;
+  }
+
   function renderTraining() {
     const p = state.profile;
     const wo = ensureWorkout();
     const done = doneToday();
     const total = (state.workoutStore.history || []).length;
+    const rec = L.recommendedSessions(C, p.goal);
     const chips = [['low', '😴 Müde'], ['normal', '🙂 Normal'], ['high', '💪 Fit']];
     const items = wo.items.map(it => {
       const target = it.type === 'hold' ? `${it.sets} × ${it.hold} Sek` : `${it.sets} × ${it.reps}`;
@@ -326,7 +461,18 @@
       ${done
         ? '<div class="row-card" style="justify-content:center;color:var(--green);font-weight:700">✅ Heute geschafft — stark!</div>'
         : '<button class="btn btn-green" id="wo-done" style="margin-top:8px">✅ Workout abschließen</button>'}
-      <button class="btn btn-ghost" id="wo-regen" style="margin-top:10px">🔄 Anderes Workout</button>`;
+      <button class="btn btn-ghost" id="wo-regen" style="margin-top:10px">🔄 Anderes Workout</button>
+
+      <div class="health-banner" style="background:linear-gradient(135deg,#A78BFA,#7C5CFC);margin-top:24px">
+        <span class="hb-ic">🎯</span>
+        <span><span class="hb-label">Passt zu deinem Ziel</span><span class="hb-text">${esc(GOAL_MATCH[p.goal] || GOAL_MATCH.health)}</span></span>
+      </div>
+
+      <div class="section-title">Sessions für dich</div>
+      <div class="h-scroll">${rec.fit.map(sessionCard).join('') || rec.ordered.slice(0, 4).map(sessionCard).join('')}</div>
+
+      <div class="section-title">Alle Sessions</div>
+      ${rec.rest.map(sessionRow).join('')}`;
   }
 
   function renderExercise() {
@@ -368,8 +514,8 @@
         { ic: '🧾', t: 'Einkaufsliste', go: 'einkauf' }
       ] },
       { head: '📘 Wissen', items: [
-        { ic: '🧬', t: 'Nährstoffe & Kombinationen', soon: 'Phase 4' },
-        { ic: '💊', t: 'Supplemente', soon: 'Phase 4' }
+        { ic: '🔆', t: 'Vitamine & Nährstoffe', go: 'wissen' },
+        { ic: '🧬', t: 'Kombinationen & Tipps', go: 'wissen' }
       ] },
       { head: '🤖 Coach', items: [
         { ic: '💬', t: 'Gesundheits-Coach (KI)', go: 'ki' }
@@ -392,6 +538,51 @@
       <p class="muted" style="text-align:center;margin-top:8px">Gesundheits-App · Phase 2 · © 2026 Marcel Fehse</p>`;
   }
 
+  // ===== Sprachfunktion (Web Speech API, kostenlos, im Browser) =====
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const ttsOk = 'speechSynthesis' in window;
+
+  function startListening() {
+    if (!SR) { alert('Spracheingabe wird von diesem Browser nicht unterstützt. Tipp: Chrome oder Safari.'); return; }
+    if (state.listening) { stopListening(); return; }
+    if (ttsOk) speechSynthesis.cancel();
+    const r = new SR();
+    recog = r;
+    r.lang = 'de-DE'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
+    state.listening = true;
+    const input = document.getElementById('chat-input');
+    const mic = document.getElementById('chat-mic');
+    if (mic) mic.classList.add('listening');
+    if (input) input.placeholder = '🎤 Ich höre zu…';
+    r.onresult = e => { let t = ''; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; if (input) input.value = t; };
+    r.onerror = () => stopListening();
+    r.onend = () => {
+      const input2 = document.getElementById('chat-input');
+      const t = (input2 && input2.value || '').trim();
+      state.listening = false;
+      const m = document.getElementById('chat-mic'); if (m) m.classList.remove('listening');
+      if (input2) input2.placeholder = 'Deine Frage…';
+      if (t && !state.chatBusy) sendToKI(t);
+    };
+    try { r.start(); } catch { stopListening(); }
+  }
+  function stopListening() {
+    state.listening = false;
+    const m = document.getElementById('chat-mic'); if (m) m.classList.remove('listening');
+    try { recog && recog.stop(); } catch {}
+  }
+  function speak(text) {
+    if (!state.voiceOut || !ttsOk) return;
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text.replace(/\*\*/g, '').replace(/[#>*_`]/g, '').slice(0, 700));
+      u.lang = 'de-DE'; u.rate = 1.0;
+      const v = speechSynthesis.getVoices().find(x => x.lang && x.lang.toLowerCase().startsWith('de'));
+      if (v) u.voice = v;
+      speechSynthesis.speak(u);
+    } catch {}
+  }
+
   // ===== KI-Chat =====
   function renderChat() {
     const msgs = state.chat;
@@ -402,13 +593,18 @@
     app.innerHTML = `
       <div class="screen">
         <div class="page-head">
-          <button class="btn btn-ghost" id="ki-back" style="width:auto;padding:8px 14px">← Zurück</button>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <button class="btn btn-ghost" id="ki-back" style="width:auto;padding:8px 14px">← Zurück</button>
+            ${ttsOk ? `<button class="btn btn-ghost" id="ki-speaker" style="width:auto;padding:8px 14px">${state.voiceOut ? '🔊 Vorlesen an' : '🔇 Vorlesen aus'}</button>` : ''}
+          </div>
           <h1 class="page-title" style="margin-top:12px">Gesundheits-Coach</h1>
+          ${SR ? '<p class="page-sub">Tippe aufs 🎤 und sprich – ich höre zu und antworte.</p>' : ''}
         </div>
         ${noEndpoint ? '<div class="warn-banner">KI noch nicht verbunden.</div>' : ''}
         <div class="warn-banner">Hinweis: Ich ersetze keine ärztliche Beratung. Bei Beschwerden bitte Arzt/Ärztin fragen.</div>
         <div class="chat-list" id="chat-list">${list}</div>
         <div class="chat-input-row">
+          ${SR ? `<button class="chat-mic" id="chat-mic" ${noEndpoint ? 'disabled' : ''} aria-label="Sprechen">🎤</button>` : ''}
           <textarea class="chat-input" id="chat-input" rows="1" placeholder="Deine Frage…" ${noEndpoint ? 'disabled' : ''}></textarea>
           <button class="chat-send" id="chat-send" ${noEndpoint || state.chatBusy ? 'disabled' : ''}>➤</button>
         </div>
@@ -422,6 +618,11 @@
     const fire = () => { const t = input.value.trim(); if (t && !state.chatBusy) sendToKI(t); };
     send.onclick = fire;
     input.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); fire(); } };
+    const speaker = document.getElementById('ki-speaker');
+    if (speaker) speaker.onclick = () => { state.voiceOut = !state.voiceOut; save('gapp.voice', state.voiceOut); if (!state.voiceOut && ttsOk) speechSynthesis.cancel(); renderChat(); };
+    const mic = document.getElementById('chat-mic');
+    if (mic) mic.onclick = () => startListening();
+    if (state.listening && mic) mic.classList.add('listening');
   }
 
   async function sendToKI(text) {
@@ -436,7 +637,9 @@
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-      state.chat.push({ role: 'assistant', content: data.text || data.reply || 'Keine Antwort erhalten.' });
+      const reply = data.text || data.reply || 'Keine Antwort erhalten.';
+      state.chat.push({ role: 'assistant', content: reply });
+      speak(reply);
     } catch {
       state.chat.push({ role: 'assistant', content: '⚠️ Verbindung zur KI fehlgeschlagen. Bitte später nochmal versuchen.' });
     } finally {
@@ -454,14 +657,21 @@
   function openRecipe(id) { state.recipeId = id; state.portions = state.plan.servings || state.profile.householdSize || 2; state.recipeBack = state.route; state.route = 'recipe'; render(); }
 
   function openExercise(id) { state.exerciseId = id; state.route = 'exercise'; render(); }
+  function openSession(id) { state.sessionId = id; state.route = 'session'; render(); }
+  function openVitamin(id) { state.vitaminId = id; state.route = 'vitamin'; render(); }
 
   function bindView() {
+    loadWeather();
     app.querySelectorAll('[data-recipe]').forEach(el => el.onclick = () => openRecipe(el.dataset.recipe));
     app.querySelectorAll('[data-ex]').forEach(el => el.onclick = () => openExercise(el.dataset.ex));
+    app.querySelectorAll('[data-session]').forEach(el => el.onclick = () => openSession(el.dataset.session));
+    app.querySelectorAll('[data-vit]').forEach(el => el.onclick = () => openVitamin(el.dataset.vit));
+    const wb = document.getElementById('wissen-back');
+    if (wb) wb.onclick = () => { state.route = 'mehr'; render(); };
     app.querySelectorAll('[data-go]').forEach(el => el.onclick = () => { state.route = el.dataset.go; render(); });
     app.querySelectorAll('[data-soon]').forEach(el => el.onclick = () => alert(`„${el.querySelector('.row-title').textContent}" kommt in ${el.dataset.soon}. 🙂`));
     const hb = document.getElementById('health-banner');
-    if (hb) hb.onclick = () => { state.route = 'ki'; renderChat(); };
+    if (hb) hb.onclick = () => { state.route = 'wissen'; render(); };
     const energy = app.querySelectorAll('[data-energy]');
     energy.forEach(el => el.onclick = () => { state.energy = el.dataset.energy; render(); });
     const woDone = document.getElementById('wo-done');

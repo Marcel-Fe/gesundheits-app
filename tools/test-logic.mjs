@@ -93,5 +93,23 @@ const exObj = L.exerciseById(content, repItem.exerciseId);
 ok('Abschließen erhöht Wdh. um 2', store1.progress[repItem.exerciseId].reps === exObj.reps + 2);
 ok('History bekommt einen Eintrag', store1.history.length === 1);
 
+// 14) Sessions: jede Session-Übung existiert
+let sessOk = true;
+for (const s of content.sessions) for (const it of s.items) if (!L.exerciseById(content, it.exerciseId)) { sessOk = false; console.error('  Session-Übung fehlt:', it.exerciseId, 'in', s.id); }
+ok('Alle Session-Übungen existieren', sessOk);
+ok('Mind. 8 Sessions vorhanden', content.sessions.length >= 8);
+
+// 15) Matching: empfohlene Sessions passen zum Ziel
+const recLose = L.recommendedSessions(content, 'lose');
+ok('Abnehm-Sessions vorhanden', recLose.fit.length > 0);
+ok('Alle empfohlenen passen zum Ziel', recLose.fit.every(s => s.goals.includes('lose')));
+ok('ordered enthält alle Sessions', recLose.ordered.length === content.sessions.length);
+
+// 16) Wissen: Nährstoffe vorhanden, Pflichtfelder gesetzt
+const know = require('../js/knowledge.js');
+ok('Mind. 12 Nährstoffe', know.nutrients.length >= 12);
+ok('Jeder Nährstoff hat Quellen & Tipps', know.nutrients.every(n => n.sources.length && n.tips.length));
+ok('Vitamin D & B12 & Eisen vorhanden', ['vitd', 'b12', 'iron'].every(id => know.nutrients.find(n => n.id === id)));
+
 console.log(`\n${fail === 0 ? '✅' : '❌'} Tests: ${pass} grün, ${fail} rot`);
 process.exit(fail === 0 ? 0 : 1);
