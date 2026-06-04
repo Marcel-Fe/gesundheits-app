@@ -210,8 +210,8 @@ button { font-family: inherit; cursor: pointer; }
 .health-banner:active { transform: scale(.99); }
 .health-banner::after { content: ""; position: absolute; width: 130px; height: 130px; border-radius: 50%; background: rgba(255,255,255,.14); top: -45px; right: -30px; }
 .health-banner .hb-ic { font-size: 34px; flex: none; position: relative; }
-.health-banner .hb-label { font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; opacity: .92; position: relative; }
-.health-banner .hb-text { font-size: 14px; font-weight: 600; line-height: 1.4; margin-top: 3px; position: relative; }
+.health-banner .hb-label { display: block; font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; opacity: .92; position: relative; }
+.health-banner .hb-text { display: block; font-size: 14px; font-weight: 600; line-height: 1.4; margin-top: 3px; position: relative; }
 
 /* ===== Energie-Chips ===== */
 .chips { display: flex; gap: var(--s2); margin-bottom: var(--s4); }
