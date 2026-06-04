@@ -95,7 +95,7 @@ button { font-family: inherit; cursor: pointer; }
 /* ===== Stat-Tiles ===== */
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s2); margin-bottom: var(--s2); }
 .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s3); text-align: center; box-shadow: var(--shadow-sm); }
-.stat-ic { font-size: 20px; }
+.stat-ic { font-size: 18px; width: 38px; height: 38px; margin: 0 auto 4px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--surface-2); }
 .stat-val { font-size: 18px; font-weight: 800; margin-top: 2px; }
 .stat-lbl { font-size: 11px; color: var(--text-2); font-weight: 600; }
 
@@ -108,6 +108,12 @@ button { font-family: inherit; cursor: pointer; }
 .meal-slot { font-size: 11px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: .4px; }
 .meal-name { font-size: 14px; font-weight: 700; line-height: 1.25; margin: 2px 0 4px; }
 .meal-kcal { font-size: 12px; color: var(--text-2); }
+
+/* Foto-Kacheln (mit Emoji-Fallback) */
+.thumb-photo { position: relative; overflow: hidden; }
+.thumb-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+.thumb-emoji { position: relative; z-index: 0; }
+.thumb-badge { position: absolute; left: 6px; top: 6px; z-index: 2; background: rgba(0,0,0,.55); color: #fff; font-size: 10px; font-weight: 700; padding: 3px 7px; border-radius: 999px; text-transform: uppercase; letter-spacing: .3px; }
 
 /* Gradient-Helfer */
 .g-sunrise { background: var(--grad-sunrise); } .g-peach { background: var(--grad-peach); }
@@ -252,6 +258,13 @@ button { font-family: inherit; cursor: pointer; }
 .drawer-sub { font-size: 12px; opacity: .9; }
 .drawer-x { width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(255,255,255,.2); color: #fff; font-size: 16px; flex: none; }
 .drawer-body { flex: 1; overflow-y: auto; padding: var(--s4); }
+
+/* ===== Barcode-Scanner ===== */
+.scan-box { position: relative; width: 100%; aspect-ratio: 4 / 3; background: #000; border-radius: var(--r-md); overflow: hidden; margin-bottom: var(--s3); }
+.scan-box video { width: 100%; height: 100%; object-fit: cover; }
+.scan-line { position: absolute; left: 8%; right: 8%; top: 50%; height: 2px; background: #ff4d4f; box-shadow: 0 0 10px #ff4d4f; animation: scanmove 2s ease-in-out infinite; }
+@keyframes scanmove { 0%, 100% { top: 28%; } 50% { top: 72%; } }
+.x-remove { background: none; border: none; color: var(--text-2); font-size: 16px; padding: 4px 6px; }
 
 /* ===== Sättigungs-Balken ===== */
 .sat-bar { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }

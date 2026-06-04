@@ -31,6 +31,8 @@
     voiceOut: load('gapp.voice', false), listening: false
   };
   let recog = null;
+  let scanStream = null, scanReader = null, scanLoop = null;
+  if (!state.shop.extras) state.shop.extras = [];
 
   const GOAL_MATCH = {
     lose: 'Zum Abnehmen zählt vor allem Bewegung: viel Cardio/HIIT für den Kalorienverbrauch, dazu etwas Kraft, um Muskeln zu erhalten.',
@@ -56,11 +58,38 @@
   const recipeById = id => C.recipes.find(r => r.id === id);
   const SLOT = { breakfast: 'Frühstück', lunch: 'Mittag', dinner: 'Abend' };
 
+  // ===== Fotos (LoremFlickr Keyword-Bilder, Emoji als Fallback) =====
+  const PHOTO_KW = {
+    // Rezepte
+    oat_bowl: 'oatmeal,berries', quark_apple: 'quark,apple', scrambled: 'scrambled,eggs',
+    lentil_stew: 'lentil,stew', chickpea_curry: 'chickpea,curry', veggie_pasta: 'vegetable,pasta',
+    potato_pan: 'potato,vegetables', chicken_rice: 'chicken,rice', bolognese: 'spaghetti,bolognese',
+    tuna_salad: 'tuna,salad', tofu_veg: 'tofu,vegetables', yogurt_snack: 'yogurt,berries',
+    // Lebensmittel
+    oats: 'oatmeal', rice: 'rice', pasta: 'pasta', potato: 'potatoes', bread: 'wholegrain,bread',
+    egg: 'eggs', lentils: 'lentils', chickpeas: 'chickpeas', beans: 'kidney,beans', quark: 'quark,cheese',
+    yogurt: 'yogurt', milk: 'milk', cheese: 'gouda,cheese', tofu: 'tofu', chicken: 'chicken,breast',
+    mince: 'minced,meat', tuna: 'tuna,can', onion: 'onion', garlic: 'garlic', carrot: 'carrots',
+    tomato: 'tomatoes', canned_tomato: 'tomato,sauce', pepper: 'bell,pepper', spinach: 'spinach',
+    broccoli: 'broccoli', zucchini: 'zucchini', banana: 'banana', apple: 'apple', berries: 'berries',
+    oil: 'olive,oil', walnuts: 'walnuts'
+  };
+  function photoUrl(id) {
+    const kw = PHOTO_KW[id]; if (!kw) return null;
+    let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    return `https://loremflickr.com/400/300/${kw}?lock=${h % 100000}`;
+  }
+  function thumb(cls, gradId, emoji, id, badge) {
+    const u = photoUrl(id);
+    return `<div class="${cls} g-${gradId} thumb-photo">${u ? `<img src="${u}" alt="" loading="lazy" onerror="this.remove()">` : ''}<span class="thumb-emoji">${emoji}</span>${badge ? `<span class="thumb-badge">${esc(badge)}</span>` : ''}</div>`;
+  }
+
   const app = document.getElementById('app');
   const nav = document.getElementById('bottom-nav');
 
   // ===== Dispatcher =====
   function render() {
+    if (state.route !== 'scan') stopScan();
     if (!state.profile) { renderOnboarding(); nav.hidden = true; return; }
     if (!state.plan) { state.plan = L.generateWeek(C, state.profile); save(STORE.plan, state.plan); }
     if (state.route === 'ki') { renderChat(); return; }
@@ -71,6 +100,7 @@
     if (state.route === 'vitamin') { renderVitamin(); nav.hidden = false; renderNav(); return; }
     if (state.route === 'lebensmittel') { app.innerHTML = `<div class="screen">${renderLebensmittel()}</div>`; nav.hidden = false; renderNav(); bindView(); return; }
     if (state.route === 'food') { renderFood(); nav.hidden = false; renderNav(); return; }
+    if (state.route === 'scan') { renderScan(); nav.hidden = false; renderNav(); return; }
     nav.hidden = false;
     renderNav();
     const view = { dashboard: renderDashboard, ernaehrung: renderErnaehrung, training: renderTraining, einkauf: renderEinkauf }[state.route] || renderDashboard;
@@ -219,9 +249,8 @@
         <div class="h-scroll">
           ${meals.map(x => `
             <button class="meal-card" data-recipe="${x.r.id}">
-              <div class="meal-thumb g-${x.r.grad}">${x.r.emoji}</div>
+              ${thumb('meal-thumb', x.r.grad, x.r.emoji, x.r.id, SLOT[x.m.slot])}
               <div class="meal-body">
-                <div class="meal-slot">${SLOT[x.m.slot]}</div>
                 <div class="meal-name">${esc(x.r.name)}</div>
                 <div class="meal-kcal">${Math.round(x.n.kcal)} kcal · ${Math.round(x.n.protein)} g Eiweiß</div>
               </div>
@@ -260,7 +289,7 @@
         const r = recipeById(m.recipeId);
         const n = L.recipeNutrients(C, r).perServing;
         return `<button class="row-card" data-recipe="${r.id}">
-          <div class="row-thumb g-${r.grad}">${r.emoji}</div>
+          ${thumb('row-thumb', r.grad, r.emoji, r.id)}
           <div class="row-main"><div class="row-title">${esc(r.name)}</div>
             <div class="row-sub">${SLOT[m.slot]} · ${Math.round(n.kcal)} kcal · ${m.servings} Port.</div></div>
           <div class="row-chev">›</div></button>`;
@@ -287,7 +316,7 @@
       <div class="page-head">
         <button class="btn btn-ghost" id="rec-back" style="width:auto;padding:8px 14px">← Zurück</button>
       </div>
-      <div class="recipe-hero g-${r.grad}">${r.emoji}</div>
+      ${thumb('recipe-hero', r.grad, r.emoji, r.id)}
       <h1 class="page-title">${esc(r.name)}</h1>
       <p class="page-sub">⏱️ ${r.prepMinutes} Min · 💶 ca. ${costPer.toFixed(2).replace('.', ',')} € pro Portion</p>
 
@@ -400,14 +429,14 @@
   // ===== Einkaufsliste =====
   function renderEinkauf() {
     const rows = L.aggregateShopping(C, state.shop.sources);
-    if (!rows.length) {
+    const extras = state.shop.extras || [];
+    if (!rows.length && !extras.length) {
       return `<div class="page-head"><h1 class="page-title">Einkaufsliste</h1></div>
-        <div class="empty-hint"><span class="eh-emoji">🛒</span>Noch leer. Erstelle im Wochenplan einen „Wocheneinkauf" oder füge ein Rezept hinzu.</div>`;
+        <div class="empty-hint"><span class="eh-emoji">🛒</span>Noch leer. Erstelle im Wochenplan einen „Wocheneinkauf", füge ein Rezept hinzu oder scanne ein Produkt.</div>`;
     }
     rows.forEach(r => r.checked = !!state.shop.checked[r.foodId]);
     const total = rows.reduce((s, r) => s + r.price, 0);
     const open = rows.filter(r => !r.checked).reduce((s, r) => s + r.price, 0);
-    // nach Kategorie gruppieren (rows sind bereits sortiert)
     let html = '', lastCat = null;
     for (const r of rows) {
       if (r.cat !== lastCat) { html += `<div class="shop-cat">${esc(r.cat)}</div>`; lastCat = r.cat; }
@@ -416,11 +445,18 @@
         <span class="ingr-name" style="flex:1"><span class="emoji">${r.emoji}</span>${esc(r.name)}</span>
         <span class="ingr-amt">${L.formatAmount(r.amount, r.unit)}</span></div>`;
     }
+    if (extras.length) {
+      html += `<div class="shop-cat">📷 Gescannt / Extra</div>`;
+      html += extras.map((e, i) => `<div class="shop-item ${state.shop.checked['x' + i] ? 'done' : ''}">
+        <button class="shop-check ${state.shop.checked['x' + i] ? 'on' : ''}" data-xcheck="${i}">${state.shop.checked['x' + i] ? '✓' : ''}</button>
+        <span class="ingr-name" style="flex:1">🏷️ ${esc(e.name)}</span>
+        <button class="x-remove" data-xremove="${i}" aria-label="Entfernen">✕</button></div>`).join('');
+    }
     return `
       <div class="page-head"><h1 class="page-title">Einkaufsliste</h1>
-        <p class="page-sub">${rows.length} Artikel · gleiche Produkte zusammengeführt</p></div>
-      <div class="budget-bar"><div><div class="muted">Geschätzte Kosten</div><b>${total.toFixed(2).replace('.', ',')} €</b></div>
-        <div style="text-align:right"><div class="muted">noch offen</div><b style="color:var(--green)">${open.toFixed(2).replace('.', ',')} €</b></div></div>
+        <p class="page-sub">${rows.length + extras.length} Artikel · gleiche Produkte zusammengeführt</p></div>
+      ${rows.length ? `<div class="budget-bar"><div><div class="muted">Geschätzte Kosten</div><b>${total.toFixed(2).replace('.', ',')} €</b></div>
+        <div style="text-align:right"><div class="muted">noch offen</div><b style="color:var(--green)">${open.toFixed(2).replace('.', ',')} €</b></div></div>` : ''}
       ${html}
       <button class="btn btn-ghost" id="shop-clear" style="margin-top:20px">Liste leeren</button>`;
   }
@@ -562,7 +598,7 @@
       const list = C.foods.filter(f => f.cat === cat);
       html += `<div class="menu-head" style="margin-top:18px">${esc(cat)}</div>`;
       html += list.map(f => `<button class="row-card" data-foodopen="${f.id}">
-        <div class="row-thumb plain">${f.emoji}</div>
+        ${thumb('row-thumb', gradForCat(f.cat), f.emoji, f.id)}
         <div class="row-main"><div class="row-title">${esc(f.name)}</div>
           <div class="row-sub">${Math.round(f.nutr.kcal)} kcal · ${Math.round(f.nutr.protein)} g Eiweiß / 100 g</div></div>
         <div class="row-chev">›</div></button>`).join('');
@@ -571,6 +607,7 @@
         <button class="btn btn-ghost" id="lm-back" style="width:auto;padding:8px 14px">← Zurück</button>
         <h1 class="page-title" style="margin-top:12px">Lebensmittel</h1>
         <p class="page-sub">${C.foods.length} Lebensmittel · Nährwerte, Preis & Sättigung</p></div>
+      <button class="btn btn-green" id="lm-scan" style="margin-bottom:16px">📷 Produkt-Barcode scannen</button>
       ${html}`;
   }
 
@@ -580,7 +617,7 @@
     const recipeIdeas = C.recipes.filter(r => r.ingredients.some(i => i.foodId === f.id)).slice(0, 4);
     app.innerHTML = `<div class="screen">
       <div class="page-head"><button class="btn btn-ghost" id="food-back" style="width:auto;padding:8px 14px">← Zurück</button></div>
-      <div class="recipe-hero g-${gradForCat(f.cat)}">${f.emoji}</div>
+      ${thumb('recipe-hero', gradForCat(f.cat), f.emoji, f.id)}
       <h1 class="page-title">${esc(f.name)}</h1>
       <p class="page-sub">${esc(f.cat)} · ${PRICE_LABEL[priceLevel(f)]}</p>
 
@@ -599,7 +636,7 @@
       <div class="card"><div class="card-title">🏷️ Eigenschaften</div>
         <div>${f.tags.map(t => `<span class="pill" style="background:var(--surface-2);color:var(--text-2)">${esc(tagLabel(t))}</span>`).join('') || '<span class="muted">—</span>'}</div></div>
 
-      ${recipeIdeas.length ? `<div class="section-title">Rezeptideen</div>${recipeIdeas.map(r => `<button class="row-card" data-recipe="${r.id}"><div class="row-thumb g-${r.grad}">${r.emoji}</div><div class="row-main"><div class="row-title">${esc(r.name)}</div><div class="row-sub">${r.prepMinutes} Min</div></div><div class="row-chev">›</div></button>`).join('')}` : ''}
+      ${recipeIdeas.length ? `<div class="section-title">Rezeptideen</div>${recipeIdeas.map(r => `<button class="row-card" data-recipe="${r.id}">${thumb('row-thumb', r.grad, r.emoji, r.id)}<div class="row-main"><div class="row-title">${esc(r.name)}</div><div class="row-sub">${r.prepMinutes} Min</div></div><div class="row-chev">›</div></button>`).join('')}` : ''}
     </div>`;
     document.getElementById('food-back').onclick = () => { state.route = 'lebensmittel'; render(); };
     app.querySelectorAll('[data-recipe]').forEach(el => el.onclick = () => openRecipe(el.dataset.recipe));
@@ -609,6 +646,90 @@
   const gradForCat = cat => CAT_GRAD[cat] || 'sage';
   const TAG_LABEL = { cheap: 'günstig', vegan: 'vegan', vegetarian: 'vegetarisch', protein: 'eiweißreich', fiber: 'ballaststoffreich', iron: 'eisenreich', vitaminC: 'Vitamin C', meat: 'Fleisch', fish: 'Fisch' };
   const tagLabel = t => TAG_LABEL[t] || t;
+
+  // ===== Barcode-Scanner (Open Food Facts) =====
+  function renderScan() {
+    const supportsCam = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    app.innerHTML = `<div class="screen">
+      <div class="page-head"><button class="btn btn-ghost" id="scan-back" style="width:auto;padding:8px 14px">← Zurück</button>
+        <h1 class="page-title" style="margin-top:12px">Barcode scannen</h1>
+        <p class="page-sub">Produktdaten kommen von Open Food Facts</p></div>
+      ${supportsCam ? `<div class="scan-box"><video id="scan-video" playsinline muted></video><div class="scan-line"></div></div>
+        <button class="btn" id="scan-start">📷 Kamera starten</button>` : '<div class="warn-banner">Kamera nicht verfügbar – bitte den Barcode unten eingeben.</div>'}
+      <div class="section-title">Oder Barcode eingeben</div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="scan-code" inputmode="numeric" placeholder="z. B. 3017620422003" />
+        <button class="chat-send" id="scan-lookup">🔍</button>
+      </div>
+      <div id="scan-result" style="margin-top:16px"></div>
+    </div>`;
+    document.getElementById('scan-back').onclick = () => { stopScan(); state.route = 'lebensmittel'; render(); };
+    const sb = document.getElementById('scan-start');
+    if (sb) sb.onclick = startScan;
+    document.getElementById('scan-lookup').onclick = () => { const c = document.getElementById('scan-code').value.trim(); if (c) lookupBarcode(c); };
+    document.getElementById('scan-code').onkeydown = e => { if (e.key === 'Enter') { const c = e.target.value.trim(); if (c) lookupBarcode(c); } };
+  }
+  function setScanInfo(msg) { const el = document.getElementById('scan-result'); if (el) el.innerHTML = `<p class="muted" style="text-align:center">${esc(msg)}</p>`; }
+  async function startScan() {
+    const video = document.getElementById('scan-video');
+    if (!video) return;
+    try { scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); video.srcObject = scanStream; await video.play(); }
+    catch { setScanInfo('Kamera-Zugriff nicht möglich. Bitte Barcode eingeben.'); return; }
+    setScanInfo('📷 Halte den Barcode in den Rahmen…');
+    if ('BarcodeDetector' in window) {
+      const det = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] });
+      scanLoop = setInterval(async () => {
+        try { const codes = await det.detect(video); if (codes && codes.length) { const c = codes[0].rawValue; stopScan(); lookupBarcode(c); } } catch {}
+      }, 600);
+    } else {
+      try {
+        const mod = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm');
+        scanReader = new mod.BrowserMultiFormatReader();
+        scanReader.decodeFromVideoElement(video, result => { if (result) { const c = result.getText(); stopScan(); lookupBarcode(c); } });
+      } catch { setScanInfo('Scanner konnte nicht geladen werden. Bitte Barcode eingeben.'); }
+    }
+  }
+  function stopScan() {
+    if (scanLoop) { clearInterval(scanLoop); scanLoop = null; }
+    if (scanReader) { try { scanReader.reset(); } catch {} scanReader = null; }
+    if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  }
+  async function lookupBarcode(code) {
+    setScanInfo('🔎 Suche Produkt…');
+    try {
+      const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,brands,nutriments,image_front_small_url,nutriscore_grade`);
+      const j = await r.json();
+      if (!j.product || j.status === 0) { setScanInfo('Kein Produkt gefunden. Bitte anderen Barcode versuchen.'); return; }
+      renderScanResult(j.product);
+    } catch { setScanInfo('Suche fehlgeschlagen – bitte Internet prüfen.'); }
+  }
+  function renderScanResult(p) {
+    const n = p.nutriments || {};
+    const name = p.product_name || 'Unbekanntes Produkt';
+    const val = k => Math.round((n[k] || 0) * 10) / 10;
+    const grade = (p.nutriscore_grade || '').toUpperCase();
+    const el = document.getElementById('scan-result');
+    el.innerHTML = `
+      <div class="card">
+        <div style="display:flex;gap:12px;align-items:center">
+          ${p.image_front_small_url ? `<img src="${esc(p.image_front_small_url)}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:12px;flex:none" onerror="this.remove()">` : ''}
+          <div><div class="card-title" style="margin:0">${esc(name)}</div>${p.brands ? `<div class="muted">${esc(p.brands)}</div>` : ''}</div>
+        </div>
+        <div class="nutri-grid" style="margin-top:12px">
+          <div class="nutri"><div class="nutri-val">${Math.round(n['energy-kcal_100g'] || 0)}</div><div class="nutri-lbl">kcal</div></div>
+          <div class="nutri"><div class="nutri-val">${val('proteins_100g')}g</div><div class="nutri-lbl">Eiweiß</div></div>
+          <div class="nutri"><div class="nutri-val">${val('carbohydrates_100g')}g</div><div class="nutri-lbl">Kohlenh.</div></div>
+          <div class="nutri"><div class="nutri-val">${val('fat_100g')}g</div><div class="nutri-lbl">Fett</div></div>
+        </div>
+        <p class="muted" style="text-align:center">Werte je 100 g${grade ? ` · Nutri-Score <b>${esc(grade)}</b>` : ''}</p>
+        <button class="btn btn-green" id="scan-add">🛒 Zur Einkaufsliste</button>
+      </div>`;
+    document.getElementById('scan-add').onclick = () => {
+      state.shop.extras.push({ name });
+      save(STORE.shop, state.shop);
+      setScanInfo('✓ Zur Einkaufsliste hinzugefügt.');
+    };
+  }
 
   // ===== Sprachfunktion (Web Speech API, kostenlos, im Browser) =====
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -772,10 +893,18 @@
     const rg = document.getElementById('regen');
     if (rg) rg.onclick = () => { state.plan = L.generateWeek(C, state.profile); save(STORE.plan, state.plan); render(); };
     const clr = document.getElementById('shop-clear');
-    if (clr) clr.onclick = () => { state.shop = { sources: [], checked: {} }; save(STORE.shop, state.shop); render(); };
+    if (clr) clr.onclick = () => { state.shop = { sources: [], checked: {}, extras: [] }; save(STORE.shop, state.shop); render(); };
     app.querySelectorAll('[data-food]').forEach(el => el.onclick = () => {
       const id = el.dataset.food; state.shop.checked[id] = !state.shop.checked[id]; save(STORE.shop, state.shop); render();
     });
+    app.querySelectorAll('[data-xcheck]').forEach(el => el.onclick = e => {
+      e.stopPropagation(); const k = 'x' + el.dataset.xcheck; state.shop.checked[k] = !state.shop.checked[k]; save(STORE.shop, state.shop); render();
+    });
+    app.querySelectorAll('[data-xremove]').forEach(el => el.onclick = e => {
+      e.stopPropagation(); state.shop.extras.splice(Number(el.dataset.xremove), 1); save(STORE.shop, state.shop); render();
+    });
+    const scanBtn = document.getElementById('lm-scan');
+    if (scanBtn) scanBtn.onclick = () => { state.route = 'scan'; render(); };
   }
 
   // ===== Start =====
