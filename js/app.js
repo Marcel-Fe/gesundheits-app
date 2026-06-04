@@ -552,6 +552,9 @@
 
   // ===== Phase 3: Lebensmittel-Datenbank =====
   const PRICE_LABEL = ['', '€ günstig', '€€ mittel', '€€€ höher'];
+  const priceLevel = f => f.base === 'stueck'
+    ? (f.unitPrice <= 0.4 ? 1 : f.unitPrice <= 1 ? 2 : 3)
+    : (f.unitPrice <= 2.5 ? 1 : f.unitPrice <= 6 ? 2 : 3);
   function renderLebensmittel() {
     const cats = [...new Set(C.foods.map(f => f.cat))];
     let html = '';
@@ -579,7 +582,7 @@
       <div class="page-head"><button class="btn btn-ghost" id="food-back" style="width:auto;padding:8px 14px">← Zurück</button></div>
       <div class="recipe-hero g-${gradForCat(f.cat)}">${f.emoji}</div>
       <h1 class="page-title">${esc(f.name)}</h1>
-      <p class="page-sub">${esc(f.cat)} · ${PRICE_LABEL[f.priceIndicator] || ''}</p>
+      <p class="page-sub">${esc(f.cat)} · ${PRICE_LABEL[priceLevel(f)]}</p>
 
       <div class="nutri-grid">
         <div class="nutri"><div class="nutri-val">${Math.round(f.nutr.kcal)}</div><div class="nutri-lbl">kcal</div></div>
