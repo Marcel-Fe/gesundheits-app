@@ -35,6 +35,9 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+  // Leichte Markdown-Darstellung für KI-Antworten (nur **fett**, sicher escaped)
+  const mdLite = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
   const app = document.getElementById('app');
   const nav = document.getElementById('bottom-nav');
 
@@ -176,7 +179,7 @@
   function renderChat() {
     const msgs = state.chat;
     const list = msgs.length
-      ? msgs.map(m => `<div class="bubble ${m.role === 'user' ? 'user' : 'ai'}">${esc(m.content)}</div>`).join('')
+      ? msgs.map(m => `<div class="bubble ${m.role === 'user' ? 'user' : 'ai'}">${m.role === 'user' ? esc(m.content) : mdLite(m.content)}</div>`).join('')
       : '<div class="empty-hint"><span class="eh-emoji">🤖</span>Frag mich zu Ernährung, Nährstoffen oder Training. Ich antworte einfach und faktenbasiert.</div>';
     const noEndpoint = !D.kiEndpoint;
     app.innerHTML = `
