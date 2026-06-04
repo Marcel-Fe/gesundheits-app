@@ -229,6 +229,8 @@ button { font-family: inherit; cursor: pointer; }
 .chips { display: flex; gap: var(--s2); margin-bottom: var(--s4); }
 .chip { flex: 1; padding: 11px 8px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 700; font-size: 13px; box-shadow: var(--shadow-sm); }
 .chip.sel { background: var(--green); color: #fff; border-color: var(--green); }
+.pchips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pchips .chip { flex: 0 0 auto; }
 
 /* ===== App-Menü ===== */
 .menu-group { margin-bottom: var(--s5); }

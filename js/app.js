@@ -98,6 +98,7 @@
     if (state.route === 'session') { renderSession(); nav.hidden = false; renderNav(); return; }
     if (state.route === 'wissen') { app.innerHTML = `<div class="screen">${renderWissen()}</div>`; nav.hidden = false; renderNav(); bindView(); return; }
     if (state.route === 'vitamin') { renderVitamin(); nav.hidden = false; renderNav(); return; }
+    if (state.route === 'profil') { renderProfil(); nav.hidden = false; renderNav(); return; }
     if (state.route === 'lebensmittel') { app.innerHTML = `<div class="screen">${renderLebensmittel()}</div>`; nav.hidden = false; renderNav(); bindView(); return; }
     if (state.route === 'food') { renderFood(); nav.hidden = false; renderNav(); return; }
     if (state.route === 'scan') { renderScan(); nav.hidden = false; renderNav(); return; }
@@ -426,6 +427,34 @@
     document.getElementById('vit-back').onclick = () => { state.route = 'wissen'; render(); };
   }
 
+  // ===== Profil (jederzeit anpassbar) =====
+  function renderProfil() {
+    const p = state.profile;
+    const blocks = D.onboarding.map(step => `
+      <div class="card">
+        <div class="card-title">${esc(step.question)}</div>
+        <div class="pchips">
+          ${step.options.map(o => `<button class="chip ${String(p[step.key]) === String(o.value) ? 'sel' : ''}" data-pkey="${step.key}" data-pval="${esc(o.value)}">${o.emoji} ${esc(o.label)}</button>`).join('')}
+        </div>
+      </div>`).join('');
+    app.innerHTML = `<div class="screen">
+      <div class="page-head">
+        <button class="btn btn-ghost" id="profil-back" style="width:auto;padding:8px 14px">← Zurück</button>
+        <h1 class="page-title" style="margin-top:12px">Mein Profil</h1>
+        <p class="page-sub">Jederzeit anpassbar – dein Plan passt sich automatisch an</p></div>
+      ${blocks}
+      <p class="muted" style="text-align:center;margin-top:8px">Änderungen werden sofort gespeichert.</p>`;
+    document.getElementById('profil-back').onclick = () => { state.route = 'dashboard'; render(); openDrawer(); };
+    app.querySelectorAll('[data-pkey]').forEach(el => el.onclick = () => {
+      const key = el.dataset.pkey, raw = el.dataset.pval, num = Number(raw);
+      state.profile[key] = (raw !== '' && !isNaN(num)) ? num : raw;
+      save(STORE.profile, state.profile);
+      state.plan = L.generateWeek(C, state.profile); save(STORE.plan, state.plan);
+      state.workout = null;
+      renderProfil();
+    });
+  }
+
   // ===== Einkaufsliste =====
   function renderEinkauf() {
     const rows = L.aggregateShopping(C, state.shop.sources);
@@ -557,7 +586,10 @@
         { ic: '🧬', t: 'Kombinationen & Tipps', go: 'wissen' }
       ] },
       { head: '🤖 Coach', items: [ { ic: '💬', t: 'Gesundheits-Coach (KI)', go: 'ki' } ] },
-      { head: '⚙️ Einstellungen', items: [ { ic: '🔄', t: 'Onboarding neu starten', reset: true } ] }
+      { head: '⚙️ Einstellungen', items: [
+        { ic: '👤', t: 'Mein Profil bearbeiten', go: 'profil' },
+        { ic: '🔄', t: 'Onboarding neu starten', reset: true }
+      ] }
     ];
   }
   function drawerRow(it) {
@@ -864,9 +896,9 @@
     app.querySelectorAll('[data-vit]').forEach(el => el.onclick = () => openVitamin(el.dataset.vit));
     app.querySelectorAll('[data-foodopen]').forEach(el => el.onclick = () => openFood(el.dataset.foodopen));
     const wb = document.getElementById('wissen-back');
-    if (wb) wb.onclick = () => { state.route = 'dashboard'; render(); };
+    if (wb) wb.onclick = () => { state.route = 'dashboard'; render(); openDrawer(); };
     const lb = document.getElementById('lm-back');
-    if (lb) lb.onclick = () => { state.route = 'dashboard'; render(); };
+    if (lb) lb.onclick = () => { state.route = 'dashboard'; render(); openDrawer(); };
     app.querySelectorAll('[data-go]').forEach(el => el.onclick = () => { state.route = el.dataset.go; render(); });
     app.querySelectorAll('[data-soon]').forEach(el => el.onclick = () => alert(`„${el.querySelector('.row-title').textContent}" kommt in ${el.dataset.soon}. 🙂`));
     const hb = document.getElementById('health-banner');
