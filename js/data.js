@@ -8,8 +8,7 @@ window.GDATA = {
     { id: 'dashboard',  label: 'Heute',     icon: '🏠' },
     { id: 'ernaehrung', label: 'Ernährung', icon: '🥗' },
     { id: 'training',   label: 'Training',  icon: '💪' },
-    { id: 'einkauf',    label: 'Einkauf',   icon: '🛒' },
-    { id: 'mehr',       label: 'Mehr',      icon: '⋯'  }
+    { id: 'einkauf',    label: 'Einkauf',   icon: '🛒' }
   ],
 
   // Onboarding-Quiz: jede Stufe schreibt in profile[key]

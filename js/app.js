@@ -27,7 +27,7 @@
     recipeId: null, recipeBack: 'ernaehrung', portions: 2,
     workoutStore: load(STORE.workout, { progress: {}, history: [] }),
     workout: null, energy: 'normal', exerciseId: null, woVariation: 0,
-    vitaminId: null, sessionId: null,
+    vitaminId: null, sessionId: null, foodId: null,
     voiceOut: load('gapp.voice', false), listening: false
   };
   let recog = null;
@@ -69,10 +69,12 @@
     if (state.route === 'session') { renderSession(); nav.hidden = false; renderNav(); return; }
     if (state.route === 'wissen') { app.innerHTML = `<div class="screen">${renderWissen()}</div>`; nav.hidden = false; renderNav(); bindView(); return; }
     if (state.route === 'vitamin') { renderVitamin(); nav.hidden = false; renderNav(); return; }
+    if (state.route === 'lebensmittel') { app.innerHTML = `<div class="screen">${renderLebensmittel()}</div>`; nav.hidden = false; renderNav(); bindView(); return; }
+    if (state.route === 'food') { renderFood(); nav.hidden = false; renderNav(); return; }
     nav.hidden = false;
     renderNav();
-    const view = { dashboard: renderDashboard, ernaehrung: renderErnaehrung, training: renderTraining, einkauf: renderEinkauf, mehr: renderMehr }[state.route] || renderDashboard;
-    app.innerHTML = `<div class="screen">${view()}</div>`;
+    const view = { dashboard: renderDashboard, ernaehrung: renderErnaehrung, training: renderTraining, einkauf: renderEinkauf }[state.route] || renderDashboard;
+    app.innerHTML = `<div class="screen">${topbar()}${view()}</div>`;
     bindView();
   }
 
@@ -496,13 +498,16 @@
     document.getElementById('ex-back').onclick = () => { state.route = 'training'; render(); };
   }
 
-  function renderMehr() {
+  // ===== Linkes Menü (Drawer) =====
+  const topbar = () => `<div class="topbar"><button class="menu-btn" id="menu-btn" aria-label="Menü öffnen">☰</button></div>`;
+
+  function menuGroups() {
     const total = (state.workoutStore.history || []).length;
-    const groups = [
+    return [
       { head: '🥗 Ernährung', items: [
         { ic: '🗓️', t: 'Wochenplan', go: 'ernaehrung' },
         { ic: '🍳', t: 'Rezepte durchstöbern', go: 'ernaehrung' },
-        { ic: '🥫', t: 'Lebensmittel-Datenbank', soon: 'Phase 3' },
+        { ic: '🥫', t: 'Lebensmittel-Datenbank', go: 'lebensmittel' },
         { ic: '⚖️', t: 'Portionsrechner', hint: 'im Rezept' }
       ] },
       { head: '💪 Training', items: [
@@ -510,33 +515,97 @@
         { ic: '📚', t: 'Übungs-Bibliothek', go: 'training' },
         { ic: '📈', t: `Fortschritt (${total} Workouts)`, go: 'training' }
       ] },
-      { head: '🛒 Einkaufen', items: [
-        { ic: '🧾', t: 'Einkaufsliste', go: 'einkauf' }
-      ] },
+      { head: '🛒 Einkaufen', items: [ { ic: '🧾', t: 'Einkaufsliste', go: 'einkauf' } ] },
       { head: '📘 Wissen', items: [
         { ic: '🔆', t: 'Vitamine & Nährstoffe', go: 'wissen' },
         { ic: '🧬', t: 'Kombinationen & Tipps', go: 'wissen' }
       ] },
-      { head: '🤖 Coach', items: [
-        { ic: '💬', t: 'Gesundheits-Coach (KI)', go: 'ki' }
-      ] },
-      { head: '⚙️ Einstellungen', items: [
-        { ic: '🔄', t: 'Onboarding neu starten', reset: true }
-      ] }
+      { head: '🤖 Coach', items: [ { ic: '💬', t: 'Gesundheits-Coach (KI)', go: 'ki' } ] },
+      { head: '⚙️ Einstellungen', items: [ { ic: '🔄', t: 'Onboarding neu starten', reset: true } ] }
     ];
-    const rowsFor = g => g.items.map(it => {
-      const attr = it.go ? `data-go="${it.go}"` : it.reset ? 'id="reset-profile"' : it.soon ? `data-soon="${it.soon}"` : '';
-      const right = it.soon ? `<span class="menu-badge">${it.soon}</span>`
-        : it.hint ? `<span class="menu-badge">${it.hint}</span>` : '<div class="row-chev">›</div>';
-      return `<button class="row-card ${it.soon ? 'soon' : ''}" ${attr}>
-        <div class="row-thumb plain">${it.ic}</div>
-        <div class="row-main"><div class="row-title">${esc(it.t)}</div></div>
-        ${right}</button>`;
-    }).join('');
-    return `<div class="page-head"><h1 class="page-title">Menü</h1><p class="page-sub">Alle Bereiche der App</p></div>
-      ${groups.map(g => `<div class="menu-group"><div class="menu-head">${g.head}</div>${rowsFor(g)}</div>`).join('')}
-      <p class="muted" style="text-align:center;margin-top:8px">Gesundheits-App · Phase 2 · © 2026 Marcel Fehse</p>`;
   }
+  function drawerRow(it) {
+    const attr = it.go ? `data-go="${it.go}"` : it.reset ? 'id="reset-profile"' : it.soon ? `data-soon="${it.soon}"` : '';
+    const right = it.soon ? `<span class="menu-badge">${it.soon}</span>` : it.hint ? `<span class="menu-badge">${it.hint}</span>` : '<div class="row-chev">›</div>';
+    return `<button class="row-card ${it.soon ? 'soon' : ''}" ${attr}><div class="row-thumb plain">${it.ic}</div><div class="row-main"><div class="row-title">${esc(it.t)}</div></div>${right}</button>`;
+  }
+  function buildDrawer() {
+    const drawer = document.getElementById('drawer');
+    drawer.innerHTML = `
+      <div class="drawer-head">
+        <div class="drawer-logo">＋</div>
+        <div class="drawer-id"><div class="drawer-title">Gesundheits-App</div><div class="drawer-sub">Menü</div></div>
+        <button class="drawer-x" id="drawer-x" aria-label="Menü schließen">✕</button>
+      </div>
+      <div class="drawer-body">
+        ${menuGroups().map(g => `<div class="menu-group"><div class="menu-head">${g.head}</div>${g.items.map(drawerRow).join('')}</div>`).join('')}
+        <p class="muted" style="text-align:center;margin:8px 0 4px">© 2026 Marcel Fehse</p>
+      </div>`;
+    document.getElementById('drawer-x').onclick = closeDrawer;
+    drawer.querySelectorAll('[data-go]').forEach(el => el.onclick = () => { closeDrawer(); state.route = el.dataset.go; render(); });
+    drawer.querySelectorAll('[data-soon]').forEach(el => el.onclick = () => alert(`„${el.querySelector('.row-title').textContent}" kommt in ${el.dataset.soon}. 🙂`));
+    const r = drawer.querySelector('#reset-profile');
+    if (r) r.onclick = () => { closeDrawer(); if (confirm('Profil zurücksetzen und Onboarding neu starten?')) { state.profile = null; state.plan = null; state.onbStep = 0; state.onbDraft = {}; localStorage.removeItem(STORE.profile); localStorage.removeItem(STORE.plan); render(); } };
+  }
+  function openDrawer() { buildDrawer(); const d = document.getElementById('drawer'), s = document.getElementById('drawer-scrim'); s.hidden = false; requestAnimationFrame(() => { d.classList.add('open'); s.classList.add('show'); }); d.setAttribute('aria-hidden', 'false'); }
+  function closeDrawer() { const d = document.getElementById('drawer'), s = document.getElementById('drawer-scrim'); d.classList.remove('open'); s.classList.remove('show'); d.setAttribute('aria-hidden', 'true'); setTimeout(() => { s.hidden = true; }, 260); }
+
+  // ===== Phase 3: Lebensmittel-Datenbank =====
+  const PRICE_LABEL = ['', '€ günstig', '€€ mittel', '€€€ höher'];
+  function renderLebensmittel() {
+    const cats = [...new Set(C.foods.map(f => f.cat))];
+    let html = '';
+    for (const cat of cats) {
+      const list = C.foods.filter(f => f.cat === cat);
+      html += `<div class="menu-head" style="margin-top:18px">${esc(cat)}</div>`;
+      html += list.map(f => `<button class="row-card" data-foodopen="${f.id}">
+        <div class="row-thumb plain">${f.emoji}</div>
+        <div class="row-main"><div class="row-title">${esc(f.name)}</div>
+          <div class="row-sub">${Math.round(f.nutr.kcal)} kcal · ${Math.round(f.nutr.protein)} g Eiweiß / 100 g</div></div>
+        <div class="row-chev">›</div></button>`).join('');
+    }
+    return `<div class="page-head">
+        <button class="btn btn-ghost" id="lm-back" style="width:auto;padding:8px 14px">← Zurück</button>
+        <h1 class="page-title" style="margin-top:12px">Lebensmittel</h1>
+        <p class="page-sub">${C.foods.length} Lebensmittel · Nährwerte, Preis & Sättigung</p></div>
+      ${html}`;
+  }
+
+  function renderFood() {
+    const f = L.foodById(C, state.foodId);
+    const satWidth = Math.max(6, Math.min(100, f.satiety));
+    const recipeIdeas = C.recipes.filter(r => r.ingredients.some(i => i.foodId === f.id)).slice(0, 4);
+    app.innerHTML = `<div class="screen">
+      <div class="page-head"><button class="btn btn-ghost" id="food-back" style="width:auto;padding:8px 14px">← Zurück</button></div>
+      <div class="recipe-hero g-${gradForCat(f.cat)}">${f.emoji}</div>
+      <h1 class="page-title">${esc(f.name)}</h1>
+      <p class="page-sub">${esc(f.cat)} · ${PRICE_LABEL[f.priceIndicator] || ''}</p>
+
+      <div class="nutri-grid">
+        <div class="nutri"><div class="nutri-val">${Math.round(f.nutr.kcal)}</div><div class="nutri-lbl">kcal</div></div>
+        <div class="nutri"><div class="nutri-val">${Math.round(f.nutr.protein)}g</div><div class="nutri-lbl">Eiweiß</div></div>
+        <div class="nutri"><div class="nutri-val">${Math.round(f.nutr.carbs)}g</div><div class="nutri-lbl">Kohlenh.</div></div>
+        <div class="nutri"><div class="nutri-val">${Math.round(f.nutr.fiber)}g</div><div class="nutri-lbl">Ballast.</div></div>
+      </div>
+      <p class="muted" style="text-align:center">Werte je 100 g/ml</p>
+
+      <div class="card" style="margin-top:12px"><div class="card-title">🍽️ Sättigung</div>
+        <div class="sat-bar"><span style="width:${satWidth}%"></span></div>
+        <p class="muted" style="margin-top:6px">${f.satiety >= 70 ? 'Hält lange satt' : f.satiety >= 45 ? 'Mittlere Sättigung' : 'Sättigt eher wenig'}</p></div>
+
+      <div class="card"><div class="card-title">🏷️ Eigenschaften</div>
+        <div>${f.tags.map(t => `<span class="pill" style="background:var(--surface-2);color:var(--text-2)">${esc(tagLabel(t))}</span>`).join('') || '<span class="muted">—</span>'}</div></div>
+
+      ${recipeIdeas.length ? `<div class="section-title">Rezeptideen</div>${recipeIdeas.map(r => `<button class="row-card" data-recipe="${r.id}"><div class="row-thumb g-${r.grad}">${r.emoji}</div><div class="row-main"><div class="row-title">${esc(r.name)}</div><div class="row-sub">${r.prepMinutes} Min</div></div><div class="row-chev">›</div></button>`).join('')}` : ''}
+    </div>`;
+    document.getElementById('food-back').onclick = () => { state.route = 'lebensmittel'; render(); };
+    app.querySelectorAll('[data-recipe]').forEach(el => el.onclick = () => openRecipe(el.dataset.recipe));
+  }
+
+  const CAT_GRAD = { 'Getreide': 'amber', 'Gemüse': 'sage', 'Obst': 'sunrise', 'Protein': 'terracotta', 'Milch': 'peach', 'Vorrat': 'amber' };
+  const gradForCat = cat => CAT_GRAD[cat] || 'sage';
+  const TAG_LABEL = { cheap: 'günstig', vegan: 'vegan', vegetarian: 'vegetarisch', protein: 'eiweißreich', fiber: 'ballaststoffreich', iron: 'eisenreich', vitaminC: 'Vitamin C', meat: 'Fleisch', fish: 'Fisch' };
+  const tagLabel = t => TAG_LABEL[t] || t;
 
   // ===== Sprachfunktion (Web Speech API, kostenlos, im Browser) =====
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -659,15 +728,21 @@
   function openExercise(id) { state.exerciseId = id; state.route = 'exercise'; render(); }
   function openSession(id) { state.sessionId = id; state.route = 'session'; render(); }
   function openVitamin(id) { state.vitaminId = id; state.route = 'vitamin'; render(); }
+  function openFood(id) { state.foodId = id; state.route = 'food'; render(); }
 
   function bindView() {
     loadWeather();
+    const mb = document.getElementById('menu-btn');
+    if (mb) mb.onclick = openDrawer;
     app.querySelectorAll('[data-recipe]').forEach(el => el.onclick = () => openRecipe(el.dataset.recipe));
     app.querySelectorAll('[data-ex]').forEach(el => el.onclick = () => openExercise(el.dataset.ex));
     app.querySelectorAll('[data-session]').forEach(el => el.onclick = () => openSession(el.dataset.session));
     app.querySelectorAll('[data-vit]').forEach(el => el.onclick = () => openVitamin(el.dataset.vit));
+    app.querySelectorAll('[data-foodopen]').forEach(el => el.onclick = () => openFood(el.dataset.foodopen));
     const wb = document.getElementById('wissen-back');
-    if (wb) wb.onclick = () => { state.route = 'mehr'; render(); };
+    if (wb) wb.onclick = () => { state.route = 'dashboard'; render(); };
+    const lb = document.getElementById('lm-back');
+    if (lb) lb.onclick = () => { state.route = 'dashboard'; render(); };
     app.querySelectorAll('[data-go]').forEach(el => el.onclick = () => { state.route = el.dataset.go; render(); });
     app.querySelectorAll('[data-soon]').forEach(el => el.onclick = () => alert(`„${el.querySelector('.row-title').textContent}" kommt in ${el.dataset.soon}. 🙂`));
     const hb = document.getElementById('health-banner');
@@ -684,14 +759,6 @@
     };
     const woRegen = document.getElementById('wo-regen');
     if (woRegen) woRegen.onclick = () => { state.woVariation++; render(); };
-    const reset = document.getElementById('reset-profile');
-    if (reset) reset.onclick = () => {
-      if (confirm('Profil zurücksetzen und Onboarding neu starten?')) {
-        state.profile = null; state.plan = null; state.onbStep = 0; state.onbDraft = {};
-        localStorage.removeItem(STORE.profile); localStorage.removeItem(STORE.plan);
-        render();
-      }
-    };
     const mk = document.getElementById('make-shop');
     if (mk) mk.onclick = () => {
       const sources = [];
@@ -711,6 +778,8 @@
   // ===== Start =====
   function boot() {
     render();
+    const scrim = document.getElementById('drawer-scrim');
+    if (scrim) scrim.onclick = closeDrawer;
     const splash = document.getElementById('splash');
     setTimeout(() => { splash.classList.add('hide'); setTimeout(() => splash.remove(), 500); }, 900);
   }
