@@ -146,6 +146,16 @@
       'Kniebeuge → Liegestütz → Strecksprung. Ganzkörper, intensiv.', null)
   ];
 
+  // Kurzvideos (Wikimedia Commons, frei, schlüssellos) – wo eine korrekte
+  // Körpergewichts-Demonstration verfügbar ist.
+  const EX_VIDEO = {
+    jumping_jacks: 'https://upload.wikimedia.org/wikipedia/commons/0/02/Jumping_jack_Animation.gif',
+    squats: 'https://upload.wikimedia.org/wikipedia/commons/5/5c/Squat_-_exercise_demonstration_video.webm',
+    lunges: 'https://upload.wikimedia.org/wikipedia/commons/a/af/Lunge-CDC_strength_training_for_older_adults.gif',
+    crunches: 'https://upload.wikimedia.org/wikipedia/commons/a/a0/Situps.gif'
+  };
+  exercises.forEach(e => { if (EX_VIDEO[e.id]) e.video = EX_VIDEO[e.id]; });
+
   // ===== Kuratierte Trainings-Sessions (schön, einfach, motivierend) =====
   // goals: lose | muscle | health | family ; items verweisen auf Übungs-IDs
   const si = (exerciseId, sets, reps, hold) => ({ exerciseId, sets, reps: reps || null, hold: hold || null });

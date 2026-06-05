@@ -31,7 +31,7 @@
     voiceOut: load('gapp.voice', false), listening: false
   };
   let recog = null;
-  let scanStream = null, scanReader = null, scanLoop = null;
+  let scanStream = null, scanReader = null, scanLoop = null, scanControls = null;
   if (!state.shop.extras) state.shop.extras = [];
 
   const GOAL_MATCH = {
@@ -58,26 +58,30 @@
   const recipeById = id => C.recipes.find(r => r.id === id);
   const SLOT = { breakfast: 'Frühstück', lunch: 'Mittag', dinner: 'Abend' };
 
-  // ===== Fotos (LoremFlickr Keyword-Bilder, Emoji als Fallback) =====
-  const PHOTO_KW = {
-    // Rezepte
-    oat_bowl: 'oatmeal,berries', quark_apple: 'quark,apple', scrambled: 'scrambled,eggs',
-    lentil_stew: 'lentil,stew', chickpea_curry: 'chickpea,curry', veggie_pasta: 'vegetable,pasta',
-    potato_pan: 'potato,vegetables', chicken_rice: 'chicken,rice', bolognese: 'spaghetti,bolognese',
-    tuna_salad: 'tuna,salad', tofu_veg: 'tofu,vegetables', yogurt_snack: 'yogurt,berries',
-    // Lebensmittel
-    oats: 'oatmeal', rice: 'rice', pasta: 'pasta', potato: 'potatoes', bread: 'wholegrain,bread',
-    egg: 'eggs', lentils: 'lentils', chickpeas: 'chickpeas', beans: 'kidney,beans', quark: 'quark,cheese',
-    yogurt: 'yogurt', milk: 'milk', cheese: 'gouda,cheese', tofu: 'tofu', chicken: 'chicken,breast',
-    mince: 'minced,meat', tuna: 'tuna,can', onion: 'onion', garlic: 'garlic', carrot: 'carrots',
-    tomato: 'tomatoes', canned_tomato: 'tomato,sauce', pepper: 'bell,pepper', spinach: 'spinach',
-    broccoli: 'broccoli', zucchini: 'zucchini', banana: 'banana', apple: 'apple', berries: 'berries',
-    oil: 'olive,oil', walnuts: 'walnuts'
+  // ===== Fotos (kuratiert über TheMealDB – garantiert Essen, nie Menschen) =====
+  // Rezepte → echte Teller-Fotos (Meal-Thumbnails). Lebensmittel → Zutatenbilder.
+  // Quelle stabil & kostenlos; bei Ladefehler greift der Emoji-Fallback (onerror).
+  const RECIPE_PHOTO = {
+    oat_bowl: 'sng9bm1765320170', quark_apple: '1543774956', scrambled: 'yvpuuy1511797244',
+    lentil_stew: 'uwxqwy1483389553', chickpea_curry: 'xvnx8j1763287209', veggie_pasta: 'ustsqw1468250014',
+    potato_pan: '0y6uvc1763258983', chicken_rice: 'fk80jp1763280767', bolognese: 'sutysw1468247559',
+    tuna_salad: 'yypwwq1511304979', tofu_veg: '1525874812', yogurt_snack: 'gkcdpl1764441325'
+  };
+  // Werte = exakte TheMealDB-Zutatennamen. quark & tofu fehlen dort → Emoji-Fallback.
+  const FOOD_ING = {
+    oats: 'Oats', rice: 'Rice', pasta: 'Spaghetti', potato: 'Potatoes', bread: 'Wholegrain Bread',
+    egg: 'Eggs', lentils: 'Lentils', chickpeas: 'Chickpeas', beans: 'Kidney Beans',
+    yogurt: 'Yogurt', milk: 'Milk', cheese: 'Gouda Cheese', chicken: 'Chicken Breast',
+    mince: 'Minced Beef', tuna: 'Tuna', onion: 'Onion', garlic: 'Garlic', carrot: 'Carrots',
+    tomato: 'Tomatoes', canned_tomato: 'Chopped Tomatoes', pepper: 'Red Pepper', spinach: 'Spinach',
+    broccoli: 'Broccoli', zucchini: 'Zucchini', banana: 'Banana', apple: 'Apples',
+    berries: 'Blueberries', oil: 'Olive Oil', walnuts: 'Walnuts'
   };
   function photoUrl(id) {
-    const kw = PHOTO_KW[id]; if (!kw) return null;
-    let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-    return `https://loremflickr.com/400/300/${kw}?lock=${h % 100000}`;
+    if (RECIPE_PHOTO[id]) return `https://www.themealdb.com/images/media/meals/${RECIPE_PHOTO[id]}.jpg`;
+    const ing = FOOD_ING[id];
+    if (ing) return `https://www.themealdb.com/images/ingredients/${encodeURIComponent(ing)}-Small.png`;
+    return null;
   }
   function thumb(cls, gradId, emoji, id, badge) {
     const u = photoUrl(id);
@@ -422,6 +426,7 @@
       <div class="card"><div class="card-title">🥗 Gute (günstige) Quellen</div><div>${n.sources.map(s => `<span class="pill" style="background:var(--surface-2);color:var(--text-2)">${esc(s)}</span>`).join('')}</div></div>
       <div class="card"><div class="card-title">📏 Tagesbedarf (Richtwert)</div><p class="muted">${esc(n.need)}</p></div>
       <div class="card"><div class="card-title">⚠️ Bei Mangel</div><p class="muted">${esc(n.deficiency)}</p></div>
+      ${n.combos ? `<div class="card"><div class="card-title">🔗 Beste Kombinationen</div><ul class="steps-ol" style="list-style:disc">${n.combos.map(c => `<li>${esc(c)}</li>`).join('')}</ul></div>` : ''}
       <div class="card"><div class="card-title">💡 Tipps</div><ul class="steps-ol" style="list-style:disc">${n.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>
     </div>`;
     document.getElementById('vit-back').onclick = () => { state.route = 'wissen'; render(); };
@@ -551,14 +556,21 @@
       ? `${t.sets} Sätze × ${t.hold} Sekunden halten`
       : `${t.sets} Sätze × ${t.reps} Wiederholungen`;
     const next = ex.nextVariantId ? L.exerciseById(C, ex.nextVariantId) : null;
+    const media = ex.video
+      ? (ex.video.endsWith('.webm')
+        ? `<video class="recipe-hero ex-media" src="${esc(ex.video)}" autoplay loop muted playsinline></video>`
+        : `<img class="recipe-hero ex-media" src="${esc(ex.video)}" alt="${esc(ex.name)}" loading="lazy">`)
+      : `<div class="recipe-hero g-${ex.grad}">${ex.emoji}</div>`;
+    const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name + ' richtig ausführen')}`;
     app.innerHTML = `<div class="screen">
       <div class="page-head"><button class="btn btn-ghost" id="ex-back" style="width:auto;padding:8px 14px">← Zurück</button></div>
-      <div class="recipe-hero g-${ex.grad}">${ex.emoji}</div>
+      ${media}
       <h1 class="page-title">${esc(ex.name)}</h1>
-      <p class="page-sub">${GROUP_LABEL[ex.group] || ''} · ${ex.equipment === 'none' ? 'ohne Geräte' : 'wenig Equipment'}</p>
+      <p class="page-sub">${GROUP_LABEL[ex.group] || ''} · ${ex.equipment === 'none' ? 'ohne Geräte' : 'wenig Equipment'}${ex.video ? ' · 🎬 Kurzvideo' : ''}</p>
       <div class="card" style="margin-top:12px"><div class="card-title">🎯 Heute</div><p class="muted">${target}</p></div>
       <div class="card"><div class="card-title">📋 So geht's</div><p class="muted">${esc(ex.technique)}</p></div>
       ${next ? `<p class="muted" style="text-align:center">Wird's zu leicht? Nächste Stufe: <b>${esc(next.name)}</b></p>` : ''}
+      <a class="btn btn-ghost" href="${ytUrl}" target="_blank" rel="noopener" style="margin-top:8px">▶️ Video-Tutorial auf YouTube</a>
     </div>`;
     document.getElementById('ex-back').onclick = () => { state.route = 'training'; render(); };
   }
@@ -686,7 +698,7 @@
       <div class="page-head"><button class="btn btn-ghost" id="scan-back" style="width:auto;padding:8px 14px">← Zurück</button>
         <h1 class="page-title" style="margin-top:12px">Barcode scannen</h1>
         <p class="page-sub">Produktdaten kommen von Open Food Facts</p></div>
-      ${supportsCam ? `<div class="scan-box"><video id="scan-video" playsinline muted></video><div class="scan-line"></div></div>
+      ${supportsCam ? `<div class="scan-box"><video id="scan-video" playsinline autoplay muted></video><div class="scan-line"></div></div>
         <button class="btn" id="scan-start">📷 Kamera starten</button>` : '<div class="warn-banner">Kamera nicht verfügbar – bitte den Barcode unten eingeben.</div>'}
       <div class="section-title">Oder Barcode eingeben</div>
       <div class="chat-input-row">
@@ -702,29 +714,50 @@
     document.getElementById('scan-code').onkeydown = e => { if (e.key === 'Enter') { const c = e.target.value.trim(); if (c) lookupBarcode(c); } };
   }
   function setScanInfo(msg) { const el = document.getElementById('scan-result'); if (el) el.innerHTML = `<p class="muted" style="text-align:center">${esc(msg)}</p>`; }
+  // Native BarcodeDetector (Android Chrome/Edge) wird bevorzugt; sonst ZXing als
+  // Fallback (iOS Safari, Firefox), das die Rückkamera selbst öffnet und verwaltet.
   async function startScan() {
     const video = document.getElementById('scan-video');
     if (!video) return;
-    try { scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); video.srcObject = scanStream; await video.play(); }
-    catch { setScanInfo('Kamera-Zugriff nicht möglich. Bitte Barcode eingeben.'); return; }
-    setScanInfo('📷 Halte den Barcode in den Rahmen…');
-    if ('BarcodeDetector' in window) {
-      const det = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] });
-      scanLoop = setInterval(async () => {
-        try { const codes = await det.detect(video); if (codes && codes.length) { const c = codes[0].rawValue; stopScan(); lookupBarcode(c); } } catch {}
-      }, 600);
-    } else {
+    const sb = document.getElementById('scan-start');
+    if (sb) sb.disabled = true;
+    const hasDetector = 'BarcodeDetector' in window;
+    if (hasDetector) {
       try {
-        const mod = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm');
-        scanReader = new mod.BrowserMultiFormatReader();
-        scanReader.decodeFromVideoElement(video, result => { if (result) { const c = result.getText(); stopScan(); lookupBarcode(c); } });
-      } catch { setScanInfo('Scanner konnte nicht geladen werden. Bitte Barcode eingeben.'); }
+        scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        video.srcObject = scanStream; await video.play();
+      } catch { setScanInfo('Kamera-Zugriff nicht möglich. Bitte Barcode unten eingeben.'); if (sb) sb.disabled = false; return; }
+      setScanInfo('📷 Halte den Barcode in den Rahmen…');
+      try {
+        const det = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] });
+        scanLoop = setInterval(async () => {
+          try { const codes = await det.detect(video); if (codes && codes.length) { const c = codes[0].rawValue; stopScan(); lookupBarcode(c); } } catch {}
+        }, 400);
+        return;
+      } catch { /* Detector da, aber Formate nicht unterstützt → ZXing versuchen */ }
+    }
+    // ZXing-Fallback: öffnet & verwaltet die Rückkamera selbst, liefert controls zum Stoppen.
+    setScanInfo('📷 Scanner wird geladen…');
+    try {
+      const mod = await import('https://esm.sh/@zxing/browser@0.1.5');
+      scanReader = new mod.BrowserMultiFormatReader();
+      scanControls = await scanReader.decodeFromConstraints(
+        { video: { facingMode: 'environment' } }, video,
+        (result) => { if (result) { const c = result.getText(); stopScan(); lookupBarcode(c); } }
+      );
+      setScanInfo('📷 Halte den Barcode in den Rahmen…');
+    } catch {
+      setScanInfo('Kamera-Scan nicht möglich – bitte den Barcode unten eingeben.');
+      if (sb) sb.disabled = false;
     }
   }
   function stopScan() {
     if (scanLoop) { clearInterval(scanLoop); scanLoop = null; }
-    if (scanReader) { try { scanReader.reset(); } catch {} scanReader = null; }
+    if (scanControls) { try { scanControls.stop(); } catch {} scanControls = null; }
+    if (scanReader) { scanReader = null; }
     if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+    const sb = document.getElementById('scan-start');
+    if (sb) sb.disabled = false;
   }
   async function lookupBarcode(code) {
     setScanInfo('🔎 Suche Produkt…');
