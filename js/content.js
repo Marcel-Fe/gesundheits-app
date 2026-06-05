@@ -218,7 +218,162 @@
     F('pesto', 'Pesto', '🌿', 'Fertig & Sonstiges', 'g', [450, 5, 6, 45, 2], 12.0, 30, ['vegetarian']),
     F('tomato_passata', 'Passierte Tomaten', '🥫', 'Fertig & Sonstiges', 'g', [35, 1.6, 6, 0.3, 1.5], 1.5, 40, ['cheap', 'vegan']),
     F('coconut_milk', 'Kokosmilch', '🥥', 'Fertig & Sonstiges', 'ml', [197, 2, 3, 20, 0], 3.0, 30, ['vegan']),
-    F('broth', 'Gemüsebrühe', '🍲', 'Fertig & Sonstiges', 'ml', [4, 0.2, 0.5, 0.1, 0], 1.0, 10, ['vegan'])
+    F('broth', 'Gemüsebrühe', '🍲', 'Fertig & Sonstiges', 'ml', [4, 0.2, 0.5, 0.1, 0], 1.0, 10, ['vegan']),
+
+    // ===== Erweiterung 2 =====
+    // Getreide & Backwaren
+    F('buckwheat', 'Buchweizen', '🌾', 'Getreide', 'g', [343, 13, 72, 3, 10], 4.0, 70, ['vegan', 'fiber']),
+    F('barley', 'Graupen (Gerste)', '🌾', 'Getreide', 'g', [352, 10, 73, 2, 17], 2.5, 70, ['vegan', 'fiber']),
+    F('amaranth', 'Amarant', '🌾', 'Getreide', 'g', [371, 14, 65, 7, 7], 7.0, 70, ['vegan', 'protein', 'fiber']),
+    F('gnocchi', 'Gnocchi', '🥟', 'Getreide', 'g', [160, 4, 33, 1, 2], 3.0, 60, ['vegetarian']),
+    F('ravioli', 'Ravioli', '🥟', 'Getreide', 'g', [180, 7, 27, 5, 2], 4.0, 60, ['vegetarian']),
+    F('lasagne', 'Lasagneplatten', '🍝', 'Getreide', 'g', [355, 12, 71, 2, 3], 2.5, 60, ['vegan']),
+    F('breadcrumbs', 'Semmelbrösel', '🍞', 'Backwaren', 'g', [395, 13, 72, 5, 4], 2.5, 30, ['vegetarian']),
+    F('pita', 'Pita-Brot', '🫓', 'Backwaren', 'stueck', [275, 9, 55, 1, 2], 0.50, 50, ['vegan'], 60),
+    F('pumpernickel', 'Pumpernickel', '🍞', 'Backwaren', 'g', [250, 8, 46, 2, 9], 3.5, 70, ['vegan', 'fiber']),
+    F('bagel', 'Bagel', '🥯', 'Backwaren', 'stueck', [250, 10, 48, 2, 2], 0.70, 55, ['vegetarian'], 85),
+    F('croissant', 'Croissant', '🥐', 'Backwaren', 'stueck', [406, 8, 45, 21, 2], 0.80, 40, ['vegetarian'], 60),
+    F('pancake', 'Pfannkuchen', '🥞', 'Backwaren', 'stueck', [227, 6, 28, 9, 1], 0.60, 50, ['vegetarian'], 80),
+    F('waffle', 'Waffel', '🧇', 'Backwaren', 'stueck', [290, 6, 33, 14, 1], 0.70, 45, ['vegetarian'], 75),
+    F('popcorn', 'Popcorn', '🍿', 'Süßes & Snacks', 'g', [387, 12, 78, 4, 15], 4.0, 45, ['vegan', 'fiber']),
+    F('naan', 'Naan-Brot', '🫓', 'Backwaren', 'stueck', [310, 9, 50, 8, 2], 0.80, 50, ['vegetarian'], 90),
+
+    // Hülsenfrüchte & pflanzliches Protein
+    F('butter_beans', 'Butterbohnen', '🫘', 'Hülsenfrüchte', 'g', [115, 7, 20, 0.4, 7], 2.5, 80, ['vegan', 'protein', 'fiber']),
+    F('pinto_beans', 'Pintobohnen', '🫘', 'Hülsenfrüchte', 'g', [143, 9, 26, 0.7, 9], 2.5, 80, ['vegan', 'protein', 'iron', 'fiber']),
+    F('mung_beans', 'Mungbohnen', '🟢', 'Hülsenfrüchte', 'g', [105, 7, 19, 0.4, 8], 4.0, 75, ['vegan', 'protein', 'fiber']),
+    F('fava_beans', 'Dicke Bohnen', '🫘', 'Hülsenfrüchte', 'g', [88, 8, 12, 0.7, 5], 3.0, 75, ['vegan', 'protein', 'fiber']),
+    F('falafel', 'Falafel', '🧆', 'Hülsenfrüchte', 'g', [333, 13, 32, 18, 5], 6.0, 65, ['vegan', 'protein', 'fiber']),
+    F('tempeh', 'Tempeh', '🟫', 'Hülsenfrüchte', 'g', [193, 19, 9, 11, 6], 9.0, 75, ['vegan', 'protein', 'fiber']),
+    F('tvp', 'Sojaschnetzel (TVP)', '🟤', 'Hülsenfrüchte', 'g', [333, 50, 30, 1, 18], 6.0, 80, ['vegan', 'protein', 'iron', 'fiber']),
+    F('miso', 'Miso-Paste', '🍶', 'Fertig & Sonstiges', 'g', [199, 12, 26, 6, 5], 12.0, 20, ['vegan', 'protein']),
+
+    // Gemüse
+    F('brussels_sprouts', 'Rosenkohl', '🥬', 'Gemüse', 'g', [43, 3.4, 9, 0.3, 4], 3.0, 60, ['vegan', 'vitaminC', 'fiber']),
+    F('fennel', 'Fenchel', '🥬', 'Gemüse', 'g', [31, 1.2, 7, 0.2, 3], 3.5, 50, ['vegan', 'fiber']),
+    F('parsnip', 'Pastinake', '🥕', 'Gemüse', 'g', [75, 1.2, 18, 0.3, 5], 3.0, 65, ['vegan', 'fiber']),
+    F('turnip', 'Steckrübe', '🥬', 'Gemüse', 'g', [38, 1.1, 9, 0.2, 2], 1.5, 55, ['vegan']),
+    F('kohlrabi', 'Kohlrabi', '🥬', 'Gemüse', 'g', [27, 1.7, 6, 0.1, 4], 2.0, 50, ['vegan', 'vitaminC', 'fiber']),
+    F('chard', 'Mangold', '🥬', 'Gemüse', 'g', [19, 1.8, 4, 0.2, 2], 3.0, 50, ['vegan', 'iron']),
+    F('rocket', 'Rucola', '🥬', 'Gemüse', 'g', [25, 2.6, 4, 0.7, 1.6], 8.0, 35, ['vegan', 'iron', 'vitaminC']),
+    F('spring_onion', 'Frühlingszwiebel', '🧅', 'Gemüse', 'g', [32, 1.8, 7, 0.2, 2.6], 3.0, 30, ['vegan', 'vitaminC']),
+    F('shallot', 'Schalotte', '🧅', 'Gemüse', 'g', [72, 2.5, 17, 0.1, 3], 4.0, 30, ['vegan']),
+    F('olives', 'Oliven', '🫒', 'Gemüse', 'g', [145, 1, 6, 15, 3], 9.0, 40, ['vegan']),
+    F('sauerkraut', 'Sauerkraut', '🥬', 'Gemüse', 'g', [19, 0.9, 4, 0.1, 3], 2.0, 45, ['vegan', 'fiber', 'vitaminC']),
+    F('pickles', 'Gewürzgurken', '🥒', 'Gemüse', 'g', [11, 0.5, 2, 0.2, 1], 2.5, 30, ['vegan']),
+    F('artichoke', 'Artischocke', '🌿', 'Gemüse', 'g', [47, 3.3, 11, 0.2, 5], 6.0, 60, ['vegan', 'fiber']),
+    F('okra', 'Okra', '🥬', 'Gemüse', 'g', [33, 1.9, 7, 0.2, 3], 6.0, 50, ['vegan', 'fiber']),
+    F('sundried_tomato', 'Getrocknete Tomaten', '🍅', 'Gemüse', 'g', [258, 14, 56, 3, 12], 12.0, 45, ['vegan', 'fiber']),
+
+    // Obst
+    F('apricot', 'Aprikose', '🍑', 'Obst', 'stueck', [48, 1.4, 11, 0.4, 2], 0.30, 45, ['vegan', 'vitaminC'], 40),
+    F('fig', 'Feige', '🟣', 'Obst', 'stueck', [74, 0.8, 19, 0.3, 3], 0.60, 45, ['vegan', 'fiber'], 50),
+    F('pomegranate', 'Granatapfel', '🔴', 'Obst', 'stueck', [83, 1.7, 19, 1.2, 4], 2.00, 50, ['vegan', 'vitaminC', 'fiber'], 280),
+    F('papaya', 'Papaya', '🟠', 'Obst', 'g', [43, 0.5, 11, 0.3, 1.7], 3.5, 45, ['vegan', 'vitaminC']),
+    F('honeydew', 'Honigmelone', '🍈', 'Obst', 'g', [36, 0.5, 9, 0.1, 0.8], 2.0, 40, ['vegan', 'vitaminC']),
+    F('clementine', 'Clementine', '🍊', 'Obst', 'stueck', [47, 0.9, 12, 0.2, 1.7], 0.30, 50, ['vegan', 'vitaminC'], 75),
+    F('cranberry', 'Cranberrys', '🔴', 'Obst', 'g', [46, 0.4, 12, 0.1, 4.6], 9.0, 45, ['vegan', 'vitaminC', 'fiber']),
+    F('blackberry', 'Brombeeren', '🫐', 'Obst', 'g', [43, 1.4, 10, 0.5, 5], 9.0, 50, ['vegan', 'fiber', 'vitaminC']),
+    F('lychee', 'Litschi', '⚪', 'Obst', 'g', [66, 0.8, 17, 0.4, 1.3], 8.0, 40, ['vegan', 'vitaminC']),
+    F('nectarine', 'Nektarine', '🍑', 'Obst', 'stueck', [44, 1.1, 11, 0.3, 1.7], 0.50, 45, ['vegan', 'vitaminC'], 140),
+    F('prunes', 'Trockenpflaumen', '🟤', 'Obst', 'g', [240, 2.2, 64, 0.4, 7], 6.0, 55, ['vegan', 'fiber']),
+    F('dried_apricot', 'Trockenaprikosen', '🟠', 'Obst', 'g', [241, 3.4, 63, 0.5, 7], 8.0, 55, ['vegan', 'fiber', 'iron']),
+
+    // Nüsse, Kerne & Mus
+    F('brazil_nuts', 'Paranüsse', '🌰', 'Nüsse & Samen', 'g', [659, 14, 12, 67, 8], 16.0, 65, ['vegan', 'protein']),
+    F('macadamia', 'Macadamia', '🌰', 'Nüsse & Samen', 'g', [718, 8, 14, 76, 9], 25.0, 65, ['vegan', 'fiber']),
+    F('pine_nuts', 'Pinienkerne', '🌰', 'Nüsse & Samen', 'g', [673, 14, 13, 68, 4], 50.0, 55, ['vegan']),
+    F('pecans', 'Pekannüsse', '🌰', 'Nüsse & Samen', 'g', [691, 9, 14, 72, 10], 20.0, 60, ['vegan', 'fiber']),
+    F('hemp_seeds', 'Hanfsamen', '🌱', 'Nüsse & Samen', 'g', [553, 32, 9, 49, 4], 18.0, 60, ['vegan', 'protein']),
+    F('tahini', 'Tahini (Sesammus)', '🥣', 'Nüsse & Samen', 'g', [595, 17, 21, 54, 9], 9.0, 55, ['vegan', 'protein']),
+    F('almond_butter', 'Mandelmus', '🥣', 'Nüsse & Samen', 'g', [614, 21, 19, 56, 10], 16.0, 65, ['vegan', 'protein']),
+
+    // Milch & Käse
+    F('ricotta', 'Ricotta', '🧀', 'Milch', 'g', [174, 11, 3, 13, 0], 6.0, 55, ['vegetarian', 'protein']),
+    F('mascarpone', 'Mascarpone', '🧀', 'Milch', 'g', [430, 5, 4, 44, 0], 8.0, 25, ['vegetarian']),
+    F('cream_cheese', 'Frischkäse', '🧀', 'Milch', 'g', [253, 6, 4, 24, 0], 6.0, 40, ['vegetarian']),
+    F('camembert', 'Camembert', '🧀', 'Milch', 'g', [300, 20, 0.5, 24, 0], 9.0, 55, ['vegetarian', 'protein']),
+    F('brie', 'Brie', '🧀', 'Milch', 'g', [334, 21, 0.5, 28, 0], 10.0, 55, ['vegetarian', 'protein']),
+    F('emmental', 'Emmentaler', '🧀', 'Milch', 'g', [380, 28, 0, 30, 0], 11.0, 60, ['vegetarian', 'protein']),
+    F('blue_cheese', 'Blauschimmelkäse', '🧀', 'Milch', 'g', [353, 21, 2, 29, 0], 14.0, 55, ['vegetarian', 'protein']),
+    F('halloumi', 'Halloumi', '🧀', 'Milch', 'g', [321, 22, 2, 25, 0], 14.0, 60, ['vegetarian', 'protein']),
+    F('buttermilk', 'Buttermilch', '🥛', 'Milch', 'ml', [40, 3.4, 4.8, 0.5, 0], 1.2, 45, ['vegetarian', 'protein']),
+    F('kefir', 'Kefir', '🥛', 'Milch', 'ml', [55, 3.3, 4, 3, 0], 2.5, 50, ['vegetarian', 'protein']),
+
+    // Fleisch & Wurst
+    F('lamb', 'Lammfleisch', '🐑', 'Fleisch', 'g', [294, 25, 0, 21, 0], 18.0, 80, ['meat', 'protein', 'iron']),
+    F('veal', 'Kalbfleisch', '🥩', 'Fleisch', 'g', [172, 24, 0, 8, 0], 16.0, 80, ['meat', 'protein']),
+    F('duck', 'Entenbrust', '🦆', 'Fleisch', 'g', [201, 23, 0, 12, 0], 14.0, 75, ['meat', 'protein']),
+    F('liver', 'Leber', '🥩', 'Fleisch', 'g', [135, 20, 4, 4, 0], 7.0, 70, ['meat', 'protein', 'iron']),
+    F('chicken_wings', 'Hähnchenflügel', '🍗', 'Fleisch', 'g', [203, 30, 0, 8, 0], 5.0, 70, ['meat', 'protein']),
+    F('chorizo', 'Chorizo', '🌭', 'Fleisch', 'g', [455, 24, 2, 38, 0], 14.0, 55, ['meat', 'protein']),
+    F('frankfurter', 'Wiener Würstchen', '🌭', 'Fleisch', 'g', [290, 12, 2, 26, 0], 8.0, 55, ['meat', 'protein']),
+    F('leberkaese', 'Leberkäse', '🍖', 'Fleisch', 'g', [280, 13, 1, 24, 0], 8.0, 55, ['meat', 'protein']),
+    F('prosciutto', 'Parmaschinken', '🍖', 'Fleisch', 'g', [195, 28, 0, 9, 0], 30.0, 60, ['meat', 'protein']),
+
+    // Fisch & Meeresfrüchte
+    F('trout', 'Forelle', '🐟', 'Fisch', 'g', [119, 21, 0, 4, 0], 14.0, 75, ['fish', 'protein']),
+    F('tilapia', 'Tilapia', '🐟', 'Fisch', 'g', [96, 20, 0, 2, 0], 12.0, 75, ['fish', 'protein']),
+    F('plaice', 'Scholle', '🐟', 'Fisch', 'g', [86, 17, 0, 1.5, 0], 14.0, 70, ['fish', 'protein']),
+    F('crab', 'Krabben', '🦀', 'Fisch', 'g', [97, 19, 0, 1.5, 0], 22.0, 70, ['fish', 'protein']),
+    F('mussels', 'Miesmuscheln', '🦪', 'Fisch', 'g', [86, 12, 4, 2, 0], 8.0, 65, ['fish', 'protein', 'iron']),
+    F('squid', 'Tintenfisch', '🦑', 'Fisch', 'g', [92, 16, 3, 1.4, 0], 14.0, 65, ['fish', 'protein']),
+    F('anchovies', 'Sardellen', '🐟', 'Fisch', 'g', [131, 20, 0, 5, 0], 14.0, 60, ['fish', 'protein']),
+    F('fish_fingers', 'Fischstäbchen', '🐟', 'Fertig & Sonstiges', 'g', [200, 12, 18, 9, 1], 7.0, 60, ['fish', 'protein']),
+
+    // Öle & Fette
+    F('sesame_oil', 'Sesamöl', '🛢️', 'Vorrat', 'ml', [884, 0, 0, 100, 0], 9.0, 0, ['vegan']),
+    F('ghee', 'Butterschmalz (Ghee)', '🧈', 'Vorrat', 'g', [900, 0, 0, 100, 0], 8.0, 0, ['vegetarian']),
+    F('lard', 'Schweineschmalz', '🧈', 'Vorrat', 'g', [902, 0, 0, 100, 0], 4.0, 0, ['meat']),
+
+    // Süßes, Snacks & Aufstriche
+    F('gummy_bears', 'Gummibärchen', '🐻', 'Süßes & Snacks', 'g', [343, 7, 77, 0.2, 0], 6.0, 15, ['vegetarian']),
+    F('marzipan', 'Marzipan', '🍬', 'Süßes & Snacks', 'g', [479, 9, 50, 27, 5], 12.0, 25, ['vegetarian']),
+    F('trail_mix', 'Studentenfutter', '🥜', 'Süßes & Snacks', 'g', [484, 14, 38, 30, 6], 9.0, 55, ['vegetarian', 'protein']),
+    F('crackers', 'Cracker', '🍘', 'Süßes & Snacks', 'g', [430, 9, 68, 13, 3], 5.0, 35, ['vegetarian']),
+    F('tortilla_chips', 'Tortilla-Chips', '🌽', 'Süßes & Snacks', 'g', [497, 7, 63, 24, 5], 7.0, 35, ['vegan']),
+    F('muesli_bar', 'Müsliriegel', '🍫', 'Süßes & Snacks', 'stueck', [400, 7, 64, 13, 5], 0.80, 45, ['vegetarian', 'fiber'], 30),
+    F('donut', 'Donut', '🍩', 'Süßes & Snacks', 'stueck', [452, 5, 51, 25, 1], 1.00, 30, ['vegetarian'], 60),
+    F('cake', 'Kuchen', '🍰', 'Süßes & Snacks', 'g', [350, 5, 50, 15, 1], 8.0, 30, ['vegetarian']),
+    F('pudding', 'Pudding', '🍮', 'Süßes & Snacks', 'g', [110, 3, 18, 3, 0], 2.5, 35, ['vegetarian']),
+
+    // Getränke
+    F('green_tea', 'Grüner Tee', '🍵', 'Getränke', 'ml', [1, 0, 0, 0, 0], 0.6, 5, ['vegan']),
+    F('hot_chocolate', 'Kakao (Getränk)', '☕', 'Getränke', 'ml', [80, 3.4, 11, 2.5, 0], 2.0, 25, ['vegetarian']),
+    F('energy_drink', 'Energydrink', '🥫', 'Getränke', 'ml', [45, 0, 11, 0, 0], 3.0, 10, ['vegan']),
+    F('lemonade', 'Limonade', '🥤', 'Getränke', 'ml', [38, 0, 9, 0, 0], 1.0, 10, ['vegan']),
+    F('iced_tea', 'Eistee', '🧉', 'Getränke', 'ml', [30, 0, 7, 0, 0], 1.0, 10, ['vegan']),
+    F('milkshake', 'Milchshake', '🥤', 'Getränke', 'ml', [112, 3.5, 18, 3, 0], 3.0, 35, ['vegetarian']),
+    F('cappuccino', 'Cappuccino', '☕', 'Getränke', 'ml', [40, 2.2, 4, 1.8, 0], 2.0, 15, ['vegetarian']),
+    F('sparkling_wine', 'Sekt', '🥂', 'Getränke', 'ml', [80, 0.2, 1.5, 0, 0], 8.0, 10, ['vegan']),
+
+    // Gewürze, Kräuter, Backzutaten
+    F('cinnamon', 'Zimt', '🟤', 'Gewürze & Kräuter', 'g', [247, 4, 81, 1.2, 53], 20.0, 0, ['vegan']),
+    F('paprika_powder', 'Paprikapulver', '🌶️', 'Gewürze & Kräuter', 'g', [282, 14, 54, 13, 35], 15.0, 0, ['vegan']),
+    F('curry_powder', 'Currypulver', '🍛', 'Gewürze & Kräuter', 'g', [325, 13, 56, 14, 33], 12.0, 0, ['vegan']),
+    F('cumin', 'Kreuzkümmel', '🟤', 'Gewürze & Kräuter', 'g', [375, 18, 44, 22, 11], 18.0, 0, ['vegan', 'iron']),
+    F('turmeric', 'Kurkuma', '🟡', 'Gewürze & Kräuter', 'g', [354, 8, 65, 10, 21], 14.0, 0, ['vegan']),
+    F('oregano', 'Oregano', '🌿', 'Gewürze & Kräuter', 'g', [265, 9, 69, 4, 43], 20.0, 0, ['vegan']),
+    F('vanilla_sugar', 'Vanillezucker', '🍦', 'Gewürze & Kräuter', 'g', [400, 0, 99, 0, 0], 10.0, 0, ['vegan']),
+    F('cocoa_powder', 'Kakaopulver', '🍫', 'Gewürze & Kräuter', 'g', [228, 20, 58, 14, 33], 8.0, 5, ['vegan', 'iron', 'fiber']),
+    F('yeast', 'Hefe', '🟤', 'Gewürze & Kräuter', 'g', [105, 11, 13, 2, 6], 8.0, 0, ['vegan']),
+    F('baking_powder', 'Backpulver', '⚪', 'Gewürze & Kräuter', 'g', [53, 0, 28, 0, 0], 6.0, 0, ['vegan']),
+    F('vinegar', 'Essig', '🍶', 'Gewürze & Kräuter', 'ml', [18, 0, 0.6, 0, 0], 1.5, 0, ['vegan']),
+    F('balsamic', 'Balsamico', '🍶', 'Gewürze & Kräuter', 'ml', [88, 0.5, 17, 0, 0], 5.0, 0, ['vegan']),
+
+    // Fertig & Sonstiges
+    F('tomato_paste', 'Tomatenmark', '🥫', 'Fertig & Sonstiges', 'g', [82, 4, 19, 0.5, 4], 3.0, 25, ['vegan', 'fiber']),
+    F('salsa', 'Salsa', '🍅', 'Fertig & Sonstiges', 'g', [36, 1.5, 7, 0.2, 1.8], 4.0, 25, ['vegan']),
+    F('guacamole', 'Guacamole', '🥑', 'Fertig & Sonstiges', 'g', [150, 2, 8, 13, 6], 9.0, 45, ['vegan', 'fiber']),
+    F('tzatziki', 'Tzatziki', '🥒', 'Fertig & Sonstiges', 'g', [120, 4, 4, 10, 0.5], 5.0, 35, ['vegetarian']),
+    F('bbq_sauce', 'BBQ-Sauce', '🍖', 'Fertig & Sonstiges', 'g', [172, 0.8, 41, 0.5, 0.7], 4.0, 15, ['vegan']),
+    F('curry_paste', 'Currypaste', '🍛', 'Fertig & Sonstiges', 'g', [130, 3, 14, 7, 3], 8.0, 15, ['vegan']),
+    F('bouillon_cube', 'Brühwürfel', '🧊', 'Fertig & Sonstiges', 'g', [230, 9, 19, 14, 1], 6.0, 5, ['vegan']),
+    F('instant_noodles', 'Instant-Nudeln', '🍜', 'Fertig & Sonstiges', 'g', [440, 9, 60, 18, 3], 4.0, 45, ['vegetarian']),
+    F('frozen_pizza', 'Tiefkühlpizza', '🍕', 'Fertig & Sonstiges', 'g', [250, 11, 30, 9, 2], 5.0, 55, ['vegetarian']),
+    F('baked_beans', 'Baked Beans', '🫘', 'Fertig & Sonstiges', 'g', [94, 5, 15, 0.5, 4], 2.5, 70, ['vegan', 'protein', 'fiber']),
+    F('sushi', 'Sushi', '🍣', 'Fertig & Sonstiges', 'g', [150, 6, 28, 2, 1], 12.0, 60, ['fish']),
+    F('protein_pudding', 'Protein-Pudding', '🍮', 'Fertig & Sonstiges', 'g', [70, 10, 5, 1, 0], 5.0, 60, ['vegetarian', 'protein'])
   ];
 
   // diet: 'vegan' | 'vegetarian' | 'meat' | 'fish'
@@ -320,8 +475,14 @@
   const EX_VIDEO = {
     jumping_jacks: 'https://upload.wikimedia.org/wikipedia/commons/0/02/Jumping_jack_Animation.gif',
     squats: 'https://upload.wikimedia.org/wikipedia/commons/5/5c/Squat_-_exercise_demonstration_video.webm',
+    jump_squats: 'https://upload.wikimedia.org/wikipedia/commons/e/e6/Squats.gif',
     lunges: 'https://upload.wikimedia.org/wikipedia/commons/a/af/Lunge-CDC_strength_training_for_older_adults.gif',
-    crunches: 'https://upload.wikimedia.org/wikipedia/commons/a/a0/Situps.gif'
+    crunches: 'https://upload.wikimedia.org/wikipedia/commons/a/a0/Situps.gif',
+    pushups: 'https://upload.wikimedia.org/wikipedia/commons/8/8f/Pushups.gif',
+    knee_pushups: 'https://upload.wikimedia.org/wikipedia/commons/8/8f/Pushups.gif',
+    diamond_pushups: 'https://upload.wikimedia.org/wikipedia/commons/8/8f/Pushups.gif',
+    high_knees: 'https://upload.wikimedia.org/wikipedia/commons/4/4e/High_knees.gif',
+    burpees: 'https://upload.wikimedia.org/wikipedia/commons/d/df/Burpee.gif'
   };
   exercises.forEach(e => { if (EX_VIDEO[e.id]) e.video = EX_VIDEO[e.id]; });
 
