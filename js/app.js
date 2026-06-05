@@ -11,10 +11,33 @@
   const C = window.GCONTENT;
   const L = window.GLOGIC;
   const K = window.GKNOW;
-  const STORE = { profile: 'gapp.profile', chat: 'gapp.chat', plan: 'gapp.plan', shop: 'gapp.shop', workout: 'gapp.workout' };
+  const STORE = { profile: 'gapp.profile', chat: 'gapp.chat', plan: 'gapp.plan', shop: 'gapp.shop', workout: 'gapp.workout', intake: 'gapp.intake', calGoal: 'gapp.calgoal' };
 
   const load = (key, fb) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fb; } catch { return fb; } };
   const save = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { console.warn('save fehlgeschlagen', e); } };
+  const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const todayIntake = () => state.intake[todayKey()] || [];
+  let toastTimer = null;
+  function toast(msg) {
+    let t = document.getElementById('toast');
+    if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+  function addFoodToShop(foodId) {
+    const f = L.foodById(C, foodId); if (!f) return;
+    if (!state.shop.extras) state.shop.extras = [];
+    state.shop.extras.push({ name: f.name });
+    save(STORE.shop, state.shop);
+    toast(`✓ „${f.name}" zur Einkaufsliste`);
+  }
+  function addIntake(name, kcal) {
+    const k = todayKey();
+    if (!state.intake[k]) state.intake[k] = [];
+    state.intake[k].push({ name, kcal: Math.round(kcal), ts: Date.now() });
+    save(STORE.intake, state.intake);
+    toast(`✓ ${Math.round(kcal)} kcal zu heute`);
+  }
 
   const state = {
     route: 'dashboard',
@@ -28,6 +51,7 @@
     workoutStore: load(STORE.workout, { progress: {}, history: [] }),
     workout: null, energy: 'normal', exerciseId: null, woVariation: 0,
     vitaminId: null, sessionId: null, foodId: null,
+    intake: load(STORE.intake, {}), calGoal: load(STORE.calGoal, null), foodQuery: '',
     voiceOut: load('gapp.voice', false), listening: false
   };
   let recog = null;
@@ -106,6 +130,8 @@
     if (state.route === 'lebensmittel') { app.innerHTML = `<div class="screen">${renderLebensmittel()}</div>`; nav.hidden = false; renderNav(); bindView(); return; }
     if (state.route === 'food') { renderFood(); nav.hidden = false; renderNav(); return; }
     if (state.route === 'scan') { renderScan(); nav.hidden = false; renderNav(); return; }
+    if (state.route === 'tracker') { app.innerHTML = `<div class="screen">${renderTracker()}</div>`; nav.hidden = false; renderNav(); bindView(); return; }
+    if (state.route === 'verlauf') { app.innerHTML = `<div class="screen">${renderVerlauf()}</div>`; nav.hidden = false; renderNav(); bindView(); return; }
     nav.hidden = false;
     renderNav();
     const view = { dashboard: renderDashboard, ernaehrung: renderErnaehrung, training: renderTraining, einkauf: renderEinkauf }[state.route] || renderDashboard;
@@ -239,7 +265,7 @@
       </div>
 
       <div class="stats" ${di()}>
-        <div class="stat"><div class="stat-ic">🔥</div><div class="stat-val">${dayKcal}</div><div class="stat-lbl">kcal heute</div></div>
+        <button class="stat" data-go="tracker"><div class="stat-ic">🔥</div><div class="stat-val">${todayIntake().reduce((s, it) => s + (it.kcal || 0), 0)}</div><div class="stat-lbl">kcal gegessen</div></button>
         <div class="stat"><div class="stat-ic">⏱️</div><div class="stat-val">${esc(p.timePerDay)}′</div><div class="stat-lbl">Workout</div></div>
         <div class="stat"><div class="stat-ic">🛒</div><div class="stat-val">${shopCount}</div><div class="stat-lbl">Einkauf</div></div>
       </div>
@@ -592,12 +618,22 @@
         { ic: '📚', t: 'Übungs-Bibliothek', go: 'training' },
         { ic: '📈', t: `Fortschritt (${total} Workouts)`, go: 'training' }
       ] },
-      { head: '🛒 Einkaufen', items: [ { ic: '🧾', t: 'Einkaufsliste', go: 'einkauf' } ] },
+      { head: '🛒 Einkaufen', items: [
+        { ic: '🧾', t: 'Einkaufsliste', go: 'einkauf' },
+        { ic: '🥗', t: 'Lebensmittel & Suche', go: 'lebensmittel' }
+      ] },
+      { head: '🔥 Kalorien', items: [
+        { ic: '📊', t: 'Kalorien-Tracker', go: 'tracker' },
+        { ic: '📷', t: 'Barcode scannen', go: 'scan' }
+      ] },
       { head: '📘 Wissen', items: [
         { ic: '🔆', t: 'Vitamine & Nährstoffe', go: 'wissen' },
         { ic: '🧬', t: 'Kombinationen & Tipps', go: 'wissen' }
       ] },
-      { head: '🤖 Coach', items: [ { ic: '💬', t: 'Gesundheits-Coach (KI)', go: 'ki' } ] },
+      { head: '🤖 Coach', items: [
+        { ic: '💬', t: 'Gesundheits-Coach (KI)', go: 'ki' },
+        { ic: '🕘', t: 'Mein Verlauf', go: 'verlauf' }
+      ] },
       { head: '⚙️ Einstellungen', items: [
         { ic: '👤', t: 'Mein Profil bearbeiten', go: 'profil' },
         { ic: '🔄', t: 'Onboarding neu starten', reset: true }
@@ -635,23 +671,28 @@
   const priceLevel = f => f.base === 'stueck'
     ? (f.unitPrice <= 0.4 ? 1 : f.unitPrice <= 1 ? 2 : 3)
     : (f.unitPrice <= 2.5 ? 1 : f.unitPrice <= 6 ? 2 : 3);
+  function foodRow(f) {
+    return `<div class="row-card" data-foodopen="${f.id}" data-name="${esc(f.name.toLowerCase())}" data-cat="${esc(f.cat)}">
+        ${thumb('row-thumb', gradForCat(f.cat), f.emoji, f.id)}
+        <div class="row-main"><div class="row-title">${esc(f.name)}</div>
+          <div class="row-sub">${Math.round(f.nutr.kcal)} kcal · ${Math.round(f.nutr.protein)} g Eiweiß / 100 g</div></div>
+        <button class="lm-add" data-foodadd="${f.id}" aria-label="Zur Einkaufsliste">＋</button></div>`;
+  }
   function renderLebensmittel() {
     const cats = [...new Set(C.foods.map(f => f.cat))];
     let html = '';
     for (const cat of cats) {
       const list = C.foods.filter(f => f.cat === cat);
-      html += `<div class="menu-head" style="margin-top:18px">${esc(cat)}</div>`;
-      html += list.map(f => `<button class="row-card" data-foodopen="${f.id}">
-        ${thumb('row-thumb', gradForCat(f.cat), f.emoji, f.id)}
-        <div class="row-main"><div class="row-title">${esc(f.name)}</div>
-          <div class="row-sub">${Math.round(f.nutr.kcal)} kcal · ${Math.round(f.nutr.protein)} g Eiweiß / 100 g</div></div>
-        <div class="row-chev">›</div></button>`).join('');
+      html += `<div class="menu-head" style="margin-top:18px" data-cathead="${esc(cat)}">${esc(cat)}</div>`;
+      html += list.map(foodRow).join('');
     }
     return `<div class="page-head">
         <button class="btn btn-ghost" id="lm-back" style="width:auto;padding:8px 14px">← Zurück</button>
         <h1 class="page-title" style="margin-top:12px">Lebensmittel</h1>
         <p class="page-sub">${C.foods.length} Lebensmittel · Nährwerte, Preis & Sättigung</p></div>
-      <button class="btn btn-green" id="lm-scan" style="margin-bottom:16px">📷 Produkt-Barcode scannen</button>
+      <input class="lm-search" id="lm-search" type="search" placeholder="🔍 Lebensmittel suchen…" value="${esc(state.foodQuery)}" />
+      <button class="btn btn-green" id="lm-scan" style="margin:8px 0 16px">📷 Produkt-Barcode scannen</button>
+      <p class="muted" id="lm-empty" style="text-align:center;display:none">Nichts gefunden.</p>
       ${html}`;
   }
 
@@ -680,10 +721,21 @@
       <div class="card"><div class="card-title">🏷️ Eigenschaften</div>
         <div>${f.tags.map(t => `<span class="pill" style="background:var(--surface-2);color:var(--text-2)">${esc(tagLabel(t))}</span>`).join('') || '<span class="muted">—</span>'}</div></div>
 
+      <div class="card"><div class="card-title">➕ Hinzufügen</div>
+        <div class="kcal-portion"><label>Portion</label><input id="food-grams" inputmode="numeric" value="100" /><span>g</span></div>
+        <button class="btn btn-green" id="food-eat" style="margin-top:8px">🔥 Zu heute (Kalorien)</button>
+        <button class="btn btn-ghost" id="food-shop" style="margin-top:8px">🛒 Zur Einkaufsliste</button></div>
+
       ${recipeIdeas.length ? `<div class="section-title">Rezeptideen</div>${recipeIdeas.map(r => `<button class="row-card" data-recipe="${r.id}">${thumb('row-thumb', r.grad, r.emoji, r.id)}<div class="row-main"><div class="row-title">${esc(r.name)}</div><div class="row-sub">${r.prepMinutes} Min</div></div><div class="row-chev">›</div></button>`).join('')}` : ''}
     </div>`;
     document.getElementById('food-back').onclick = () => { state.route = 'lebensmittel'; render(); };
     app.querySelectorAll('[data-recipe]').forEach(el => el.onclick = () => openRecipe(el.dataset.recipe));
+    document.getElementById('food-shop').onclick = () => addFoodToShop(f.id);
+    document.getElementById('food-eat').onclick = () => {
+      const g = Number(document.getElementById('food-grams').value) || 100;
+      addIntake(`${f.name} (${g} g)`, f.nutr.kcal * g / 100);
+      state.route = 'tracker'; render();
+    };
   }
 
   const CAT_GRAD = { 'Getreide': 'amber', 'Gemüse': 'sage', 'Obst': 'sunrise', 'Protein': 'terracotta', 'Milch': 'peach', 'Vorrat': 'amber' };
@@ -787,13 +839,96 @@
           <div class="nutri"><div class="nutri-val">${val('fat_100g')}g</div><div class="nutri-lbl">Fett</div></div>
         </div>
         <p class="muted" style="text-align:center">Werte je 100 g${grade ? ` · Nutri-Score <b>${esc(grade)}</b>` : ''}</p>
-        <button class="btn btn-green" id="scan-add">🛒 Zur Einkaufsliste</button>
+        <div class="kcal-portion"><label>Portion</label>
+          <input id="scan-grams" inputmode="numeric" value="100" /><span>g</span></div>
+        <button class="btn btn-green" id="scan-eat">🔥 Zu heute (Kalorien)</button>
+        <button class="btn btn-ghost" id="scan-add" style="margin-top:8px">🛒 Zur Einkaufsliste</button>
       </div>`;
+    const kcal100 = Math.round(n['energy-kcal_100g'] || 0);
     document.getElementById('scan-add').onclick = () => {
+      if (!state.shop.extras) state.shop.extras = [];
       state.shop.extras.push({ name });
       save(STORE.shop, state.shop);
-      setScanInfo('✓ Zur Einkaufsliste hinzugefügt.');
+      toast('✓ Zur Einkaufsliste');
     };
+    document.getElementById('scan-eat').onclick = () => {
+      const g = Number(document.getElementById('scan-grams').value) || 100;
+      const kcal = Math.round(kcal100 * g / 100);
+      addIntake(`${name} (${g} g)`, kcal);
+      stopScan();
+      state.route = 'tracker'; render();
+    };
+  }
+
+  // ===== Kalorien-Tracker (heute gegessen) =====
+  function renderTracker() {
+    const items = todayIntake();
+    const eaten = items.reduce((s, it) => s + (it.kcal || 0), 0);
+    const goal = state.calGoal;
+    const pct = goal ? Math.min(100, Math.round(eaten / goal * 100)) : 0;
+    const rest = goal ? goal - eaten : 0;
+    const over = goal && rest < 0;
+    const list = items.length
+      ? items.map((it, i) => `<div class="shop-item">
+          <span class="ingr-name" style="flex:1">🍽️ ${esc(it.name)}</span>
+          <span class="ingr-amt">${it.kcal} kcal</span>
+          <button class="x-remove" data-intakedel="${i}" aria-label="Entfernen">✕</button></div>`).join('')
+      : '<div class="empty-hint"><span class="eh-emoji">🍽️</span>Noch nichts erfasst. Scanne ein Produkt oder füge ein Lebensmittel hinzu.</div>';
+    return `<div class="page-head">
+        <button class="btn btn-ghost" id="simple-back" style="width:auto;padding:8px 14px">← Zurück</button>
+        <h1 class="page-title" style="margin-top:12px">Kalorien heute</h1>
+        <p class="page-sub">${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}</p></div>
+      ${goal ? `
+        <div class="budget-bar" style="flex-direction:column;align-items:stretch;gap:10px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <div><div class="muted">Gegessen</div><b style="font-size:22px">${eaten} kcal</b></div>
+            <div style="text-align:right"><div class="muted">${over ? 'darüber' : 'noch übrig'}</div>
+              <b style="font-size:22px;color:${over ? 'var(--terracotta,#E2725B)' : 'var(--green)'}">${over ? '+' + Math.abs(rest) : rest} kcal</b></div>
+          </div>
+          <div class="sat-bar"><span style="width:${pct}%;background:${over ? '#E2725B' : ''}"></span></div>
+          <div class="muted" style="text-align:center">Ziel: ${goal} kcal · <button class="link-btn" id="cal-goal-edit">ändern</button></div>
+        </div>` : `
+        <div class="card">
+          <div class="card-title">🎯 Tagesziel setzen</div>
+          <p class="muted">Wie viele Kalorien möchtest du pro Tag essen? (z. B. 2000)</p>
+          <div class="chat-input-row" style="margin-top:8px">
+            <input class="chat-input" id="cal-goal-input" inputmode="numeric" placeholder="kcal/Tag" />
+            <button class="chat-send" id="cal-goal-save">✓</button>
+          </div>
+        </div>`}
+      ${goal ? `<div id="cal-goal-editor" hidden><div class="card"><div class="card-title">🎯 Ziel ändern</div>
+        <div class="chat-input-row" style="margin-top:8px">
+          <input class="chat-input" id="cal-goal-input" inputmode="numeric" value="${goal}" />
+          <button class="chat-send" id="cal-goal-save">✓</button></div></div></div>` : ''}
+      <div class="section-title">Heute gegessen</div>
+      ${list}
+      ${items.length ? `<button class="btn btn-ghost" id="intake-clear" style="margin-top:16px">Heute leeren</button>` : ''}`;
+  }
+
+  // ===== KI-Verlauf (gespeicherte Fragen & Antworten) =====
+  function renderVerlauf() {
+    const pairs = [];
+    for (let i = 0; i < state.chat.length; i++) {
+      if (state.chat[i].role === 'user') {
+        const a = (state.chat[i + 1] && state.chat[i + 1].role === 'assistant') ? state.chat[i + 1] : null;
+        pairs.push({ i, q: state.chat[i].content, a: a ? a.content : null });
+      }
+    }
+    const list = pairs.length
+      ? pairs.slice().reverse().map(p => `<div class="card">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:start">
+            <div class="card-title" style="margin:0">❓ ${esc(p.q)}</div>
+            <button class="x-remove" data-verlaufdel="${p.i}" aria-label="Löschen">🗑️</button>
+          </div>
+          ${p.a ? `<div class="muted" style="margin-top:8px">${mdLite(p.a)}</div>` : '<div class="muted" style="margin-top:8px">—</div>'}
+        </div>`).join('')
+      : '<div class="empty-hint"><span class="eh-emoji">🕘</span>Noch kein Verlauf. Stelle dem Coach eine Frage – sie wird hier gespeichert.</div>';
+    return `<div class="page-head">
+        <button class="btn btn-ghost" id="simple-back" style="width:auto;padding:8px 14px">← Zurück</button>
+        <h1 class="page-title" style="margin-top:12px">Mein Verlauf</h1>
+        <p class="page-sub">${pairs.length} gespeicherte ${pairs.length === 1 ? 'Frage' : 'Fragen'}</p></div>
+      ${list}
+      ${pairs.length ? `<button class="btn btn-ghost" id="verlauf-clear" style="margin-top:16px">🧹 Alles löschen</button>` : ''}`;
   }
 
   // ===== Sprachfunktion (Web Speech API, kostenlos, im Browser) =====
@@ -853,7 +988,10 @@
         <div class="page-head">
           <div style="display:flex;align-items:center;justify-content:space-between">
             <button class="btn btn-ghost" id="ki-back" style="width:auto;padding:8px 14px">← Zurück</button>
-            ${ttsOk ? `<button class="btn btn-ghost" id="ki-speaker" style="width:auto;padding:8px 14px">${state.voiceOut ? '🔊 Vorlesen an' : '🔇 Vorlesen aus'}</button>` : ''}
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-ghost" id="ki-verlauf" style="width:auto;padding:8px 14px">🕘 Verlauf</button>
+              ${ttsOk ? `<button class="btn btn-ghost" id="ki-speaker" style="width:auto;padding:8px 14px">${state.voiceOut ? '🔊' : '🔇'}</button>` : ''}
+            </div>
           </div>
           <h1 class="page-title" style="margin-top:12px">Gesundheits-Coach</h1>
           ${SR ? '<p class="page-sub">Tippe aufs 🎤 und sprich – ich höre zu und antworte.</p>' : ''}
@@ -869,6 +1007,8 @@
       </div>`;
     nav.hidden = true;
     document.getElementById('ki-back').onclick = () => { state.route = 'dashboard'; render(); };
+    const kvl = document.getElementById('ki-verlauf');
+    if (kvl) kvl.onclick = () => { state.route = 'verlauf'; render(); };
     if (noEndpoint) return;
     const input = document.getElementById('chat-input'), send = document.getElementById('chat-send'), listEl = document.getElementById('chat-list');
     listEl.scrollTop = listEl.scrollHeight;
@@ -932,6 +1072,8 @@
     if (wb) wb.onclick = () => { state.route = 'dashboard'; render(); openDrawer(); };
     const lb = document.getElementById('lm-back');
     if (lb) lb.onclick = () => { state.route = 'dashboard'; render(); openDrawer(); };
+    const sbk = document.getElementById('simple-back');
+    if (sbk) sbk.onclick = () => { state.route = 'dashboard'; render(); };
     app.querySelectorAll('[data-go]').forEach(el => el.onclick = () => { state.route = el.dataset.go; render(); });
     app.querySelectorAll('[data-soon]').forEach(el => el.onclick = () => alert(`„${el.querySelector('.row-title').textContent}" kommt in ${el.dataset.soon}. 🙂`));
     const hb = document.getElementById('health-banner');
@@ -970,6 +1112,55 @@
     });
     const scanBtn = document.getElementById('lm-scan');
     if (scanBtn) scanBtn.onclick = () => { state.route = 'scan'; render(); };
+    app.querySelectorAll('[data-foodadd]').forEach(el => el.onclick = e => {
+      e.stopPropagation(); addFoodToShop(el.dataset.foodadd);
+    });
+    const search = document.getElementById('lm-search');
+    if (search) {
+      const apply = () => {
+        const q = search.value.trim().toLowerCase();
+        state.foodQuery = search.value;
+        const catCount = {};
+        app.querySelectorAll('[data-foodopen]').forEach(row => {
+          const hit = !q || row.dataset.name.includes(q);
+          row.style.display = hit ? '' : 'none';
+          if (hit) catCount[row.dataset.cat] = (catCount[row.dataset.cat] || 0) + 1;
+        });
+        app.querySelectorAll('[data-cathead]').forEach(h => { h.style.display = catCount[h.dataset.cathead] ? '' : 'none'; });
+        const empty = document.getElementById('lm-empty');
+        if (empty) empty.style.display = Object.keys(catCount).length ? 'none' : 'block';
+      };
+      search.oninput = apply;
+      if (state.foodQuery) apply();
+    }
+    const trackerDel = app.querySelectorAll('[data-intakedel]');
+    trackerDel.forEach(el => el.onclick = () => {
+      const k = todayKey(); const arr = state.intake[k] || [];
+      arr.splice(Number(el.dataset.intakedel), 1);
+      if (!arr.length) delete state.intake[k];
+      save(STORE.intake, state.intake); render();
+    });
+    const goalBtn = document.getElementById('cal-goal-save');
+    if (goalBtn) goalBtn.onclick = () => {
+      const v = Number(document.getElementById('cal-goal-input').value);
+      state.calGoal = (v && v > 0) ? Math.round(v) : null;
+      save(STORE.calGoal, state.calGoal); render();
+    };
+    const goalEdit = document.getElementById('cal-goal-edit');
+    if (goalEdit) goalEdit.onclick = () => { const ed = document.getElementById('cal-goal-editor'); if (ed) { ed.hidden = !ed.hidden; if (!ed.hidden) ed.querySelector('input').focus(); } };
+    const trackerClear = document.getElementById('intake-clear');
+    if (trackerClear) trackerClear.onclick = () => {
+      if (confirm('Heutige Einträge löschen?')) { delete state.intake[todayKey()]; save(STORE.intake, state.intake); render(); }
+    };
+    app.querySelectorAll('[data-verlaufdel]').forEach(el => el.onclick = () => {
+      const i = Number(el.dataset.verlaufdel);
+      state.chat.splice(i, 2); // Frage + Antwort-Paar entfernen
+      save(STORE.chat, state.chat); render();
+    });
+    const verlaufClear = document.getElementById('verlauf-clear');
+    if (verlaufClear) verlaufClear.onclick = () => {
+      if (confirm('Gesamten KI-Verlauf löschen?')) { state.chat = []; save(STORE.chat, state.chat); render(); }
+    };
   }
 
   // ===== Start =====

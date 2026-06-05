@@ -277,3 +277,20 @@ button { font-family: inherit; cursor: pointer; }
   .splash-overlay { transition: none; }
   .drawer { transition: none; }
 }
+
+/* Lebensmittel-Suche & Schnell-Hinzufügen */
+button.stat { font: inherit; cursor: pointer; width: 100%; }
+.lm-search { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); color: var(--text); font-size: 15px; box-sizing: border-box; }
+.lm-add { flex: none; width: 34px; height: 34px; border-radius: 50%; border: none; background: var(--green); color: #fff; font-size: 20px; font-weight: 700; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.lm-add:active { transform: scale(.92); }
+
+/* Kalorien-Portion */
+.kcal-portion { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.kcal-portion label { color: var(--text-2); font-weight: 600; font-size: 14px; }
+.kcal-portion input { flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-2); color: var(--text); font-size: 15px; max-width: 120px; }
+.kcal-portion span { color: var(--text-2); }
+.link-btn { background: none; border: none; color: var(--green); font-weight: 700; cursor: pointer; padding: 0; font-size: inherit; text-decoration: underline; }
+
+/* Toast */
+.toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%) translateY(20px); background: rgba(20,20,20,.92); color: #fff; padding: 12px 18px; border-radius: 999px; font-size: 14px; font-weight: 600; box-shadow: 0 6px 24px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 1000; max-width: 86%; text-align: center; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
