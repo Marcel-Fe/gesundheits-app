@@ -537,10 +537,8 @@
     const overallPct = Math.round((state.playIdx) / state.playSteps.length * 100);
     const isRest = st.kind === 'rest';
     const ex = isRest ? st.nextEx : st.ex;
-    const media = (ex && ex.video)
-      ? (ex.video.endsWith('.webm')
-        ? `<video class="play-media" src="${esc(ex.video)}" autoplay loop muted playsinline></video>`
-        : `<img class="play-media" src="${esc(ex.video)}" alt="" loading="eager">`)
+    const media = (ex && ex.anim)
+      ? `<div class="play-media ex-anim"><span class="anim-emoji g-${ex.grad}">${ex.emoji}</span><img class="anim-fr" src="${esc(ex.anim.a)}" alt="" onerror="this.style.display='none'"><img class="anim-fr b" src="${esc(ex.anim.b)}" alt="" onerror="this.style.display='none'"></div>`
       : `<div class="play-media play-emoji g-${ex ? ex.grad : 'sage'}">${ex ? ex.emoji : '🏁'}</div>`;
     const target = isRest ? '' : (st.isHold ? `${st.hold} Sekunden halten` : `${st.reps} Wiederholungen`);
     app.innerHTML = `<div class="screen play-screen ${isRest ? 'rest' : 'work'}">
@@ -729,17 +727,15 @@
       ? `${t.sets} Sätze × ${t.hold} Sekunden halten`
       : `${t.sets} Sätze × ${t.reps} Wiederholungen`;
     const next = ex.nextVariantId ? L.exerciseById(C, ex.nextVariantId) : null;
-    const media = ex.video
-      ? (ex.video.endsWith('.webm')
-        ? `<video class="recipe-hero ex-media" src="${esc(ex.video)}" autoplay loop muted playsinline></video>`
-        : `<img class="recipe-hero ex-media" src="${esc(ex.video)}" alt="${esc(ex.name)}" loading="lazy">`)
+    const media = ex.anim
+      ? `<div class="recipe-hero ex-anim"><span class="anim-emoji g-${ex.grad}">${ex.emoji}</span><img class="anim-fr" src="${esc(ex.anim.a)}" alt="${esc(ex.name)}" onerror="this.style.display='none'"><img class="anim-fr b" src="${esc(ex.anim.b)}" alt="" onerror="this.style.display='none'"></div>`
       : `<div class="recipe-hero g-${ex.grad}">${ex.emoji}</div>`;
     const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name + ' richtig ausführen')}`;
     app.innerHTML = `<div class="screen">
       <div class="page-head"><button class="btn btn-ghost" id="ex-back" style="width:auto;padding:8px 14px">← Zurück</button></div>
       ${media}
       <h1 class="page-title">${esc(ex.name)}</h1>
-      <p class="page-sub">${GROUP_LABEL[ex.group] || ''} · ${ex.equipment === 'none' ? 'ohne Geräte' : 'wenig Equipment'}${ex.video ? ' · 🎬 Kurzvideo' : ''}</p>
+      <p class="page-sub">${GROUP_LABEL[ex.group] || ''} · ${ex.equipment === 'none' ? 'ohne Geräte' : 'wenig Equipment'}${ex.anim ? ' · 📷 Demo' : ''}</p>
       <div class="card" style="margin-top:12px"><div class="card-title">🎯 Heute</div><p class="muted">${target}</p></div>
       <div class="card"><div class="card-title">📋 So geht's</div><p class="muted">${esc(ex.technique)}</p></div>
       ${next ? `<p class="muted" style="text-align:center">Wird's zu leicht? Nächste Stufe: <b>${esc(next.name)}</b></p>` : ''}

@@ -277,6 +277,7 @@ button { font-family: inherit; cursor: pointer; }
   .screen, .splash-content, .stagger > * { animation: none; opacity: 1; transform: none; }
   .splash-overlay { transition: none; }
   .drawer { transition: none; }
+  .ex-anim .anim-fr.b { animation: none; opacity: 0; }
 }
 
 /* Lebensmittel-Suche & Schnell-Hinzufügen */
@@ -333,3 +334,11 @@ button.stat { font: inherit; cursor: pointer; width: 100%; }
 .play-controls .btn { flex: 1; padding: 16px 8px; font-size: 16px; }
 .play-done { margin: auto; }
 .play-done-emoji { font-size: 80px; margin-bottom: 8px; }
+
+/* Animierte Foto-Demo (echte Person, 2 Frames im Wechsel) */
+.ex-anim { position: relative; overflow: hidden; background: #fff; }
+.ex-anim .anim-emoji { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 70px; z-index: 0; }
+.ex-anim .anim-fr { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #fff; z-index: 1; }
+.ex-anim .anim-fr.b { z-index: 2; animation: animflip 1.1s steps(1, end) infinite; }
+.play-media.ex-anim .anim-emoji { font-size: 96px; }
+@keyframes animflip { 0%, 50% { opacity: 0; } 50.01%, 100% { opacity: 1; } }
