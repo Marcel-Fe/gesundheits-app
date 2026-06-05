@@ -7,6 +7,7 @@ window.GDATA = {
   tabs: [
     { id: 'dashboard',  label: 'Heute',     icon: '🏠' },
     { id: 'ernaehrung', label: 'Ernährung', icon: '🥗' },
+    { id: 'tracker',    label: 'Kalorien',  icon: '🔥' },
     { id: 'training',   label: 'Training',  icon: '💪' },
     { id: 'einkauf',    label: 'Einkauf',   icon: '🛒' }
   ],

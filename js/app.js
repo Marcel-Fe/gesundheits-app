@@ -31,10 +31,17 @@
     save(STORE.shop, state.shop);
     toast(`✓ „${f.name}" zur Einkaufsliste`);
   }
-  function addIntake(name, kcal) {
+  const MEAL_CATS = [
+    { id: 'breakfast', label: 'Frühstück', emoji: '🌅' },
+    { id: 'lunch', label: 'Mittagessen', emoji: '☀️' },
+    { id: 'dinner', label: 'Abendessen', emoji: '🌙' },
+    { id: 'snack', label: 'Snacks', emoji: '🍎' }
+  ];
+  const mealCatByTime = () => { const h = new Date().getHours(); return h < 11 ? 'breakfast' : h < 15 ? 'lunch' : h < 21 ? 'dinner' : 'snack'; };
+  function addIntake(name, kcal, cat) {
     const k = todayKey();
     if (!state.intake[k]) state.intake[k] = [];
-    state.intake[k].push({ name, kcal: Math.round(kcal), ts: Date.now() });
+    state.intake[k].push({ name, kcal: Math.round(kcal), cat: cat || mealCatByTime(), ts: Date.now() });
     save(STORE.intake, state.intake);
     toast(`✓ ${Math.round(kcal)} kcal zu heute`);
   }
@@ -91,20 +98,10 @@
     potato_pan: '0y6uvc1763258983', chicken_rice: 'fk80jp1763280767', bolognese: 'sutysw1468247559',
     tuna_salad: 'yypwwq1511304979', tofu_veg: '1525874812', yogurt_snack: 'gkcdpl1764441325'
   };
-  // Werte = exakte TheMealDB-Zutatennamen. quark & tofu fehlen dort → Emoji-Fallback.
-  const FOOD_ING = {
-    oats: 'Oats', rice: 'Rice', pasta: 'Spaghetti', potato: 'Potatoes', bread: 'Wholegrain Bread',
-    egg: 'Eggs', lentils: 'Lentils', chickpeas: 'Chickpeas', beans: 'Kidney Beans',
-    yogurt: 'Yogurt', milk: 'Milk', cheese: 'Gouda Cheese', chicken: 'Chicken Breast',
-    mince: 'Minced Beef', tuna: 'Tuna', onion: 'Onion', garlic: 'Garlic', carrot: 'Carrots',
-    tomato: 'Tomatoes', canned_tomato: 'Chopped Tomatoes', pepper: 'Red Pepper', spinach: 'Spinach',
-    broccoli: 'Broccoli', zucchini: 'Zucchini', banana: 'Banana', apple: 'Apples',
-    berries: 'Blueberries', oil: 'Olive Oil', walnuts: 'Walnuts'
-  };
+  // Nur Rezepte bekommen echte Fotos. Lebensmittel nutzen die klaren Emoji-Kacheln
+  // (Zutaten-Fotos waren uneinheitlich/teils unpassend).
   function photoUrl(id) {
     if (RECIPE_PHOTO[id]) return `https://www.themealdb.com/images/media/meals/${RECIPE_PHOTO[id]}.jpg`;
-    const ing = FOOD_ING[id];
-    if (ing) return `https://www.themealdb.com/images/ingredients/${encodeURIComponent(ing)}-Small.png`;
     return null;
   }
   function thumb(cls, gradId, emoji, id, badge) {
@@ -252,6 +249,10 @@
     const day = state.plan.days[idx];
     const meals = day.meals.map(m => ({ m, r: recipeById(m.recipeId), n: L.recipeNutrients(C, recipeById(m.recipeId)).perServing }));
     const dayKcal = Math.round(meals.reduce((s, x) => s + x.n.kcal, 0));
+    const calEaten = todayIntake().reduce((s, it) => s + (it.kcal || 0), 0);
+    const calGoal = state.calGoal;
+    const calPct = calGoal ? Math.min(100, Math.round(calEaten / calGoal * 100)) : (calEaten ? 100 : 0);
+    const calOver = calGoal && calEaten > calGoal;
     const shopCount = L.aggregateShopping(C, state.shop.sources).length;
     const tip = tipOfDay();
     const wo = ensureWorkout();
@@ -265,10 +266,19 @@
       </div>
 
       <div class="stats" ${di()}>
-        <button class="stat" data-go="tracker"><div class="stat-ic">🔥</div><div class="stat-val">${todayIntake().reduce((s, it) => s + (it.kcal || 0), 0)}</div><div class="stat-lbl">kcal gegessen</div></button>
+        <div class="stat"><div class="stat-ic">🍽️</div><div class="stat-val">${meals.length}</div><div class="stat-lbl">Mahlzeiten</div></div>
         <div class="stat"><div class="stat-ic">⏱️</div><div class="stat-val">${esc(p.timePerDay)}′</div><div class="stat-lbl">Workout</div></div>
         <div class="stat"><div class="stat-ic">🛒</div><div class="stat-val">${shopCount}</div><div class="stat-lbl">Einkauf</div></div>
       </div>
+
+      <button class="cal-card" data-go="tracker" ${di()}>
+        <div class="cal-card-head">
+          <span class="cal-card-title">🔥 Kalorien heute</span>
+          <span class="cal-card-num">${calEaten}${calGoal ? ` <span class="cal-card-goal">/ ${calGoal}</span>` : ''} kcal</span>
+        </div>
+        <div class="sat-bar"><span style="width:${calPct}%;background:${calOver ? '#E2725B' : ''}"></span></div>
+        <div class="cal-card-sub">${calGoal ? (calOver ? `${calEaten - calGoal} kcal über dem Ziel` : `Noch ${calGoal - calEaten} kcal übrig`) : 'Tippen, um Essen einzutragen & Ziel zu setzen'} ›</div>
+      </button>
 
       <button class="health-banner" id="health-banner" ${di()}>
         <span class="hb-ic">${tip.ic}</span>
@@ -868,12 +878,24 @@
     const pct = goal ? Math.min(100, Math.round(eaten / goal * 100)) : 0;
     const rest = goal ? goal - eaten : 0;
     const over = goal && rest < 0;
-    const list = items.length
-      ? items.map((it, i) => `<div class="shop-item">
-          <span class="ingr-name" style="flex:1">🍽️ ${esc(it.name)}</span>
+    const cat = state.trackerCat || mealCatByTime();
+
+    let list = '';
+    if (items.length) {
+      for (const c of MEAL_CATS) {
+        const group = items.filter(it => (it.cat || 'snack') === c.id);
+        if (!group.length) continue;
+        const sub = group.reduce((s, it) => s + it.kcal, 0);
+        list += `<div class="shop-cat">${c.emoji} ${c.label} · ${sub} kcal</div>`;
+        list += group.map(it => `<div class="shop-item">
+          <span class="ingr-name" style="flex:1">${esc(it.name)}</span>
           <span class="ingr-amt">${it.kcal} kcal</span>
-          <button class="x-remove" data-intakedel="${i}" aria-label="Entfernen">✕</button></div>`).join('')
-      : '<div class="empty-hint"><span class="eh-emoji">🍽️</span>Noch nichts erfasst. Scanne ein Produkt oder füge ein Lebensmittel hinzu.</div>';
+          <button class="x-remove" data-intakedel="${it.ts}" aria-label="Entfernen">✕</button></div>`).join('');
+      }
+    } else {
+      list = '<div class="empty-hint"><span class="eh-emoji">🍽️</span>Noch nichts erfasst. Trage unten ein, was du gegessen hast.</div>';
+    }
+
     return `<div class="page-head">
         <button class="btn btn-ghost" id="simple-back" style="width:auto;padding:8px 14px">← Zurück</button>
         <h1 class="page-title" style="margin-top:12px">Kalorien heute</h1>
@@ -883,11 +905,15 @@
           <div style="display:flex;justify-content:space-between;align-items:baseline">
             <div><div class="muted">Gegessen</div><b style="font-size:22px">${eaten} kcal</b></div>
             <div style="text-align:right"><div class="muted">${over ? 'darüber' : 'noch übrig'}</div>
-              <b style="font-size:22px;color:${over ? 'var(--terracotta,#E2725B)' : 'var(--green)'}">${over ? '+' + Math.abs(rest) : rest} kcal</b></div>
+              <b style="font-size:22px;color:${over ? '#E2725B' : 'var(--green)'}">${over ? '+' + Math.abs(rest) : rest} kcal</b></div>
           </div>
           <div class="sat-bar"><span style="width:${pct}%;background:${over ? '#E2725B' : ''}"></span></div>
           <div class="muted" style="text-align:center">Ziel: ${goal} kcal · <button class="link-btn" id="cal-goal-edit">ändern</button></div>
-        </div>` : `
+        </div>
+        <div id="cal-goal-editor" hidden><div class="card"><div class="card-title">🎯 Ziel ändern</div>
+          <div class="chat-input-row" style="margin-top:8px">
+            <input class="chat-input" id="cal-goal-input" inputmode="numeric" value="${goal}" />
+            <button class="chat-send" id="cal-goal-save">✓</button></div></div></div>` : `
         <div class="card">
           <div class="card-title">🎯 Tagesziel setzen</div>
           <p class="muted">Wie viele Kalorien möchtest du pro Tag essen? (z. B. 2000)</p>
@@ -896,10 +922,25 @@
             <button class="chat-send" id="cal-goal-save">✓</button>
           </div>
         </div>`}
-      ${goal ? `<div id="cal-goal-editor" hidden><div class="card"><div class="card-title">🎯 Ziel ändern</div>
-        <div class="chat-input-row" style="margin-top:8px">
-          <input class="chat-input" id="cal-goal-input" inputmode="numeric" value="${goal}" />
-          <button class="chat-send" id="cal-goal-save">✓</button></div></div></div>` : ''}
+
+      <div class="section-title">Eintragen</div>
+      <div class="track-actions">
+        <button class="btn btn-green" data-go="scan">📷 Barcode</button>
+        <button class="btn btn-ghost" data-go="lebensmittel">🔍 Suchen</button>
+        <button class="btn btn-ghost" id="manual-toggle">✏️ Selbst</button>
+      </div>
+      <div id="manual-form" ${state.manualOpen ? '' : 'hidden'}>
+        <div class="card">
+          <div class="pchips">${MEAL_CATS.map(c => `<button class="chip ${cat === c.id ? 'sel' : ''}" data-trackcat="${c.id}">${c.emoji} ${c.label}</button>`).join('')}</div>
+          <input class="lm-search" id="manual-name" placeholder="Was hast du gegessen?" style="margin-top:10px" />
+          <div class="kcal-portion" style="margin-top:8px">
+            <input id="manual-kcal" inputmode="numeric" placeholder="kcal" />
+            <span>kcal</span>
+            <button class="chat-send" id="manual-add">✓</button>
+          </div>
+        </div>
+      </div>
+
       <div class="section-title">Heute gegessen</div>
       ${list}
       ${items.length ? `<button class="btn btn-ghost" id="intake-clear" style="margin-top:16px">Heute leeren</button>` : ''}`;
@@ -1133,13 +1174,25 @@
       search.oninput = apply;
       if (state.foodQuery) apply();
     }
-    const trackerDel = app.querySelectorAll('[data-intakedel]');
-    trackerDel.forEach(el => el.onclick = () => {
+    app.querySelectorAll('[data-intakedel]').forEach(el => el.onclick = () => {
       const k = todayKey(); const arr = state.intake[k] || [];
-      arr.splice(Number(el.dataset.intakedel), 1);
+      const ts = Number(el.dataset.intakedel);
+      const idx = arr.findIndex(it => it.ts === ts);
+      if (idx >= 0) arr.splice(idx, 1);
       if (!arr.length) delete state.intake[k];
       save(STORE.intake, state.intake); render();
     });
+    const manualToggle = document.getElementById('manual-toggle');
+    if (manualToggle) manualToggle.onclick = () => { state.manualOpen = !state.manualOpen; render(); };
+    app.querySelectorAll('[data-trackcat]').forEach(el => el.onclick = () => { state.trackerCat = el.dataset.trackcat; state.manualOpen = true; render(); });
+    const manualAdd = document.getElementById('manual-add');
+    if (manualAdd) manualAdd.onclick = () => {
+      const name = (document.getElementById('manual-name').value || '').trim();
+      const kcal = Number(document.getElementById('manual-kcal').value);
+      if (!name || !kcal || kcal <= 0) { toast('Bitte Name und kcal eingeben'); return; }
+      addIntake(name, kcal, state.trackerCat || mealCatByTime());
+      state.manualOpen = false; state.trackerCat = null; render();
+    };
     const goalBtn = document.getElementById('cal-goal-save');
     if (goalBtn) goalBtn.onclick = () => {
       const v = Number(document.getElementById('cal-goal-input').value);
