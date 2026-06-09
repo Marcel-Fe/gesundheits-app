@@ -38,10 +38,11 @@
     { id: 'snack', label: 'Snacks', emoji: '🍎' }
   ];
   const mealCatByTime = () => { const h = new Date().getHours(); return h < 11 ? 'breakfast' : h < 15 ? 'lunch' : h < 21 ? 'dinner' : 'snack'; };
-  function addIntake(name, kcal, cat) {
+  function addIntake(name, kcal, cat, macros) {
     const k = todayKey();
     if (!state.intake[k]) state.intake[k] = [];
-    state.intake[k].push({ name, kcal: Math.round(kcal), cat: cat || mealCatByTime(), ts: Date.now() });
+    const m = macros || {};
+    state.intake[k].push({ name, kcal: Math.round(kcal), c: Math.round(m.c || 0), p: Math.round(m.p || 0), f: Math.round(m.f || 0), cat: cat || mealCatByTime(), ts: Date.now() });
     save(STORE.intake, state.intake);
     toast(`✓ ${Math.round(kcal)} kcal zu heute`);
   }
@@ -62,7 +63,7 @@
     voiceOut: load('gapp.voice', false), listening: false
   };
   let recog = null;
-  let scanStream = null, scanReader = null, scanLoop = null, scanControls = null;
+  let scanStream = null, scanReader = null, scanLoop = null, scanControls = null, scanTimeout = null;
   if (!state.shop.extras) state.shop.extras = [];
 
   const GOAL_MATCH = {
@@ -96,7 +97,13 @@
     oat_bowl: 'sng9bm1765320170', quark_apple: '1543774956', scrambled: 'yvpuuy1511797244',
     lentil_stew: 'uwxqwy1483389553', chickpea_curry: 'xvnx8j1763287209', veggie_pasta: 'ustsqw1468250014',
     potato_pan: '0y6uvc1763258983', chicken_rice: 'fk80jp1763280767', bolognese: 'sutysw1468247559',
-    tuna_salad: 'yypwwq1511304979', tofu_veg: '1525874812', yogurt_snack: 'gkcdpl1764441325'
+    tuna_salad: 'yypwwq1511304979', tofu_veg: '1525874812', yogurt_snack: 'gkcdpl1764441325',
+    // Erweiterung: nur verifizierte TheMealDB-Treffer mit passender Optik
+    pancakes: 'rwuyqx1511383174', omelette: 'hqaejl1695738653', ratatouille: 'wrpwuu1511786491',
+    hummus_bowl: 'gpon5u1763801180', lentil_salad: 'vpxyqt1511464175', fried_rice: 'wuyd2h1765655837',
+    couscous_salad: 'qxytrx1511304021', fish_potato: 'ysxwuq1487323065', pork_veg: 'lwsnkl1604181187',
+    tofu_stirfry: '1525874812', spaghetti_aglio: '5fu4ew1760524857', chili_con_carne: 'uuqvwu1504629254',
+    veggie_lasagne: 'rvxxuy1468312893', salmon_veg: '1548772327', stuffed_peppers: 'b66myb1683207208'
   };
   // Nur Rezepte bekommen echte Fotos. Lebensmittel nutzen die klaren Emoji-Kacheln
   // (Zutaten-Fotos waren uneinheitlich/teils unpassend).
@@ -876,7 +883,9 @@
     document.getElementById('food-shop').onclick = () => addFoodToShop(f.id);
     document.getElementById('food-eat').onclick = () => {
       const g = Number(document.getElementById('food-grams').value) || 100;
-      addIntake(`${f.name} (${g} g)`, f.nutr.kcal * g / 100);
+      const r = g / 100;
+      addIntake(`${f.name} (${g} g)`, f.nutr.kcal * r, state.trackerCat || mealCatByTime(),
+        { c: f.nutr.carbs * r, p: f.nutr.protein * r, f: f.nutr.fat * r });
       state.route = 'tracker'; render();
     };
   }
@@ -915,6 +924,19 @@
   function setScanInfo(msg) { const el = document.getElementById('scan-result'); if (el) el.innerHTML = `<p class="muted" style="text-align:center">${esc(msg)}</p>`; }
   // Native BarcodeDetector (Android Chrome/Edge) wird bevorzugt; sonst ZXing als
   // Fallback (iOS Safari, Firefox), das die Rückkamera selbst öffnet und verwaltet.
+  // Übersetzt Kamera-Fehler in einen verständlichen Hinweis.
+  function camErrorText(err) {
+    const n = err && err.name;
+    if (n === 'NotAllowedError' || n === 'SecurityError') return 'Kamera-Zugriff wurde abgelehnt. Bitte in den Browser-Einstellungen erlauben – oder den Barcode unten eingeben.';
+    if (n === 'NotFoundError' || n === 'OverconstrainedError') return 'Keine passende Kamera gefunden. Bitte den Barcode unten eingeben.';
+    if (n === 'NotReadableError') return 'Die Kamera ist gerade durch eine andere App belegt. Schließe sie und versuche es erneut – oder gib den Barcode unten ein.';
+    return 'Kamera-Scan nicht möglich – bitte den Barcode unten eingeben.';
+  }
+  // Sanfter Hinweis, falls nach einer Weile kein Code erkannt wurde (Scanner läuft weiter).
+  function armScanTimeout() {
+    if (scanTimeout) clearTimeout(scanTimeout);
+    scanTimeout = setTimeout(() => setScanInfo('Noch nichts erkannt – Barcode ruhig und gut beleuchtet in den Rahmen halten. Alternativ unten eingeben.'), 20000);
+  }
   async function startScan() {
     const video = document.getElementById('scan-video');
     if (!video) return;
@@ -925,13 +947,14 @@
       try {
         scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         video.srcObject = scanStream; await video.play();
-      } catch { setScanInfo('Kamera-Zugriff nicht möglich. Bitte Barcode unten eingeben.'); if (sb) sb.disabled = false; return; }
+      } catch (err) { setScanInfo(camErrorText(err)); if (sb) sb.disabled = false; return; }
       setScanInfo('📷 Halte den Barcode in den Rahmen…');
       try {
         const det = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'] });
         scanLoop = setInterval(async () => {
           try { const codes = await det.detect(video); if (codes && codes.length) { const c = codes[0].rawValue; stopScan(); lookupBarcode(c); } } catch {}
         }, 400);
+        armScanTimeout();
         return;
       } catch { /* Detector da, aber Formate nicht unterstützt → ZXing versuchen */ }
     }
@@ -945,12 +968,14 @@
         (result) => { if (result) { const c = result.getText(); stopScan(); lookupBarcode(c); } }
       );
       setScanInfo('📷 Halte den Barcode in den Rahmen…');
-    } catch {
-      setScanInfo('Kamera-Scan nicht möglich – bitte den Barcode unten eingeben.');
+      armScanTimeout();
+    } catch (err) {
+      setScanInfo(err && err.name ? camErrorText(err) : 'Scanner konnte nicht geladen werden – bitte Internet prüfen oder den Barcode unten eingeben.');
       if (sb) sb.disabled = false;
     }
   }
   function stopScan() {
+    if (scanTimeout) { clearTimeout(scanTimeout); scanTimeout = null; }
     if (scanLoop) { clearInterval(scanLoop); scanLoop = null; }
     if (scanControls) { try { scanControls.stop(); } catch {} scanControls = null; }
     if (scanReader) { scanReader = null; }
@@ -959,13 +984,19 @@
     if (sb) sb.disabled = false;
   }
   async function lookupBarcode(code) {
+    const clean = String(code).replace(/\D/g, '');
+    if (clean.length < 8) { setScanInfo('Bitte einen gültigen Barcode eingeben (mindestens 8 Ziffern).'); return; }
     setScanInfo('🔎 Suche Produkt…');
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 12000);
     try {
-      const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,brands,nutriments,image_front_small_url,nutriscore_grade`);
+      const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(clean)}.json?fields=product_name,brands,nutriments,image_front_small_url,nutriscore_grade`, { signal: ctrl.signal });
       const j = await r.json();
-      if (!j.product || j.status === 0) { setScanInfo('Kein Produkt gefunden. Bitte anderen Barcode versuchen.'); return; }
+      if (!j.product || j.status === 0) { setScanInfo('Kein Produkt gefunden. Bitte den Barcode prüfen oder ein anderes Produkt versuchen.'); return; }
       renderScanResult(j.product);
-    } catch { setScanInfo('Suche fehlgeschlagen – bitte Internet prüfen.'); }
+    } catch (err) {
+      setScanInfo(err && err.name === 'AbortError' ? 'Zeitüberschreitung bei der Suche – bitte Internetverbindung prüfen und erneut versuchen.' : 'Suche fehlgeschlagen – bitte Internet prüfen.');
+    } finally { clearTimeout(to); }
   }
   function renderScanResult(p) {
     const n = p.nutriments || {};
@@ -1000,57 +1031,30 @@
     };
     document.getElementById('scan-eat').onclick = () => {
       const g = Number(document.getElementById('scan-grams').value) || 100;
-      const kcal = Math.round(kcal100 * g / 100);
-      addIntake(`${name} (${g} g)`, kcal);
+      const r = g / 100;
+      addIntake(`${name} (${g} g)`, Math.round(kcal100 * r), state.trackerCat || mealCatByTime(),
+        { c: (n['carbohydrates_100g'] || 0) * r, p: (n['proteins_100g'] || 0) * r, f: (n['fat_100g'] || 0) * r });
       stopScan();
       state.route = 'tracker'; render();
     };
   }
 
   // ===== Kalorien-Tracker (heute gegessen) =====
+  const MEAL_GRAD = { breakfast: 'sunrise', lunch: 'amber', dinner: 'terracotta', snack: 'sage' };
+  const MEAL_SHARE = { breakfast: 0.25, lunch: 0.35, dinner: 0.30, snack: 0.10 };
+
   function renderTracker() {
     const items = todayIntake();
-    const eaten = items.reduce((s, it) => s + (it.kcal || 0), 0);
     const goal = state.calGoal;
-    const pct = goal ? Math.min(100, Math.round(eaten / goal * 100)) : 0;
-    const rest = goal ? goal - eaten : 0;
-    const over = goal && rest < 0;
     const cat = state.trackerCat || mealCatByTime();
-
-    let list = '';
-    if (items.length) {
-      for (const c of MEAL_CATS) {
-        const group = items.filter(it => (it.cat || 'snack') === c.id);
-        if (!group.length) continue;
-        const sub = group.reduce((s, it) => s + it.kcal, 0);
-        list += `<div class="shop-cat">${c.emoji} ${c.label} · ${sub} kcal</div>`;
-        list += group.map(it => `<div class="shop-item">
-          <span class="ingr-name" style="flex:1">${esc(it.name)}</span>
-          <span class="ingr-amt">${it.kcal} kcal</span>
-          <button class="x-remove" data-intakedel="${it.ts}" aria-label="Entfernen">✕</button></div>`).join('');
-      }
-    } else {
-      list = '<div class="empty-hint"><span class="eh-emoji">🍽️</span>Noch nichts erfasst. Trage unten ein, was du gegessen hast.</div>';
-    }
-
-    return `<div class="page-head">
+    const head = `<div class="page-head">
         <button class="btn btn-ghost" id="simple-back" style="width:auto;padding:8px 14px">← Zurück</button>
         <h1 class="page-title" style="margin-top:12px">Kalorien heute</h1>
-        <p class="page-sub">${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}</p></div>
-      ${goal ? `
-        <div class="budget-bar" style="flex-direction:column;align-items:stretch;gap:10px">
-          <div style="display:flex;justify-content:space-between;align-items:baseline">
-            <div><div class="muted">Gegessen</div><b style="font-size:22px">${eaten} kcal</b></div>
-            <div style="text-align:right"><div class="muted">${over ? 'darüber' : 'noch übrig'}</div>
-              <b style="font-size:22px;color:${over ? '#E2725B' : 'var(--green)'}">${over ? '+' + Math.abs(rest) : rest} kcal</b></div>
-          </div>
-          <div class="sat-bar"><span style="width:${pct}%;background:${over ? '#E2725B' : ''}"></span></div>
-          <div class="muted" style="text-align:center">Ziel: ${goal} kcal · <button class="link-btn" id="cal-goal-edit">ändern</button></div>
-        </div>
-        <div id="cal-goal-editor" hidden><div class="card"><div class="card-title">🎯 Ziel ändern</div>
-          <div class="chat-input-row" style="margin-top:8px">
-            <input class="chat-input" id="cal-goal-input" inputmode="numeric" value="${goal}" />
-            <button class="chat-send" id="cal-goal-save">✓</button></div></div></div>` : `
+        <p class="page-sub">${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}</p></div>`;
+
+    // Ohne Ziel: erst Tagesziel abfragen.
+    if (!goal) {
+      return `${head}
         <div class="card">
           <div class="card-title">🎯 Tagesziel setzen</div>
           <p class="muted">Wie viele Kalorien möchtest du pro Tag essen? (z. B. 2000)</p>
@@ -1058,9 +1062,68 @@
             <input class="chat-input" id="cal-goal-input" inputmode="numeric" placeholder="kcal/Tag" />
             <button class="chat-send" id="cal-goal-save">✓</button>
           </div>
-        </div>`}
+        </div>`;
+    }
 
-      <div class="section-title">Eintragen</div>
+    const sum = items.reduce((a, it) => ({ kcal: a.kcal + (it.kcal || 0), c: a.c + (it.c || 0), p: a.p + (it.p || 0), f: a.f + (it.f || 0) }), { kcal: 0, c: 0, p: 0, f: 0 });
+    const eaten = Math.round(sum.kcal);
+    const rest = goal - eaten;
+    const over = rest < 0;
+    const circ = 327; // 2·π·52
+    const offset = Math.round(circ * (1 - Math.min(1, eaten / goal)));
+    const ringColor = over ? '#E2725B' : 'var(--green)';
+
+    // Makro-Ziele aus dem Kalorienziel (50 % KH, 20 % Eiweiß, 30 % Fett).
+    const macros = [
+      { label: 'Kohlenhydrate', g: sum.c, target: goal * 0.5 / 4, color: '#E8A33D' },
+      { label: 'Eiweiß', g: sum.p, target: goal * 0.2 / 4, color: '#16A34A' },
+      { label: 'Fett', g: sum.f, target: goal * 0.3 / 9, color: '#5B8DEF' }
+    ].map(m => {
+      const tg = Math.round(m.target), gv = Math.round(m.g);
+      const p = tg ? Math.min(100, Math.round(gv / tg * 100)) : 0;
+      return `<div class="macro">
+        <div class="macro-top"><span>${m.label}</span><span class="muted">${gv} / ${tg} g</span></div>
+        <div class="macro-bar"><span style="width:${p}%;background:${m.color}"></span></div></div>`;
+    }).join('');
+
+    // Mahlzeiten-Karten mit eigenem Budget und „+".
+    const meals = MEAL_CATS.map(c => {
+      const group = items.filter(it => (it.cat || 'snack') === c.id);
+      const sub = Math.round(group.reduce((s, it) => s + (it.kcal || 0), 0));
+      const tgt = Math.round(goal * (MEAL_SHARE[c.id] || 0));
+      const rows = group.map(it => `<div class="meal-item">
+          <span class="meal-item-name">${esc(it.name)}</span>
+          <span class="meal-item-kcal">${Math.round(it.kcal)} kcal</span>
+          <button class="x-remove" data-intakedel="${it.ts}" aria-label="Entfernen">✕</button></div>`).join('');
+      return `<div class="meal-card">
+        <div class="meal-head">
+          <div class="meal-ic g-${MEAL_GRAD[c.id]}">${c.emoji}</div>
+          <div class="meal-info"><div class="meal-name">${c.label}</div><div class="meal-sub">${sub} / ${tgt} kcal</div></div>
+          <button class="meal-add" data-mealadd="${c.id}" aria-label="${esc(c.label)} hinzufügen">+</button>
+        </div>${rows}</div>`;
+    }).join('');
+
+    return `${head}
+      <div class="cal-hero card">
+        <div class="cal-hero-row">
+          <div class="cal-side"><b>${eaten}</b><span>Gegessen</span></div>
+          <div class="cal-ring-wrap">
+            <svg viewBox="0 0 120 120" class="cal-ring" aria-hidden="true">
+              <circle class="cal-ring-bg" cx="60" cy="60" r="52"/>
+              <circle class="cal-ring-fg" cx="60" cy="60" r="52" stroke-dasharray="${circ}" stroke-dashoffset="${offset}" style="stroke:${ringColor}"/>
+            </svg>
+            <div class="cal-ring-center"><b style="${over ? 'color:#E2725B' : ''}">${over ? '+' + Math.abs(rest) : rest}</b><span>${over ? 'kcal zu viel' : 'kcal übrig'}</span></div>
+          </div>
+          <div class="cal-side"><b>${goal}</b><span>Ziel</span></div>
+        </div>
+        <div class="cal-macros">${macros}</div>
+        <button class="link-btn" id="cal-goal-edit" style="display:block;margin:12px auto 0">Ziel ändern</button>
+        <div id="cal-goal-editor" hidden>
+          <div class="chat-input-row" style="margin-top:10px">
+            <input class="chat-input" id="cal-goal-input" inputmode="numeric" value="${goal}" />
+            <button class="chat-send" id="cal-goal-save">✓</button></div></div>
+      </div>
+
       <div class="track-actions">
         <button class="btn btn-green" data-go="scan">📷 Barcode</button>
         <button class="btn btn-ghost" data-go="lebensmittel">🔍 Suchen</button>
@@ -1078,8 +1141,8 @@
         </div>
       </div>
 
-      <div class="section-title">Heute gegessen</div>
-      ${list}
+      <div class="section-title">Mahlzeiten</div>
+      ${meals}
       ${items.length ? `<button class="btn btn-ghost" id="intake-clear" style="margin-top:16px">Heute leeren</button>` : ''}`;
   }
 
@@ -1322,6 +1385,10 @@
     const manualToggle = document.getElementById('manual-toggle');
     if (manualToggle) manualToggle.onclick = () => { state.manualOpen = !state.manualOpen; render(); };
     app.querySelectorAll('[data-trackcat]').forEach(el => el.onclick = () => { state.trackerCat = el.dataset.trackcat; state.manualOpen = true; render(); });
+    app.querySelectorAll('[data-mealadd]').forEach(el => el.onclick = () => {
+      state.trackerCat = el.dataset.mealadd; state.manualOpen = true; render();
+      const mf = document.getElementById('manual-form'); if (mf) mf.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
     const manualAdd = document.getElementById('manual-add');
     if (manualAdd) manualAdd.onclick = () => {
       const name = (document.getElementById('manual-name').value || '').trim();
