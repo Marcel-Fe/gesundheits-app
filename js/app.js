@@ -262,15 +262,14 @@
     const idx = L.todayIndex(state.plan);
     const day = state.plan.days[idx];
     const meals = day.meals.map(m => ({ m, r: recipeById(m.recipeId), n: L.recipeNutrients(C, recipeById(m.recipeId)).perServing }));
-    const dayKcal = Math.round(meals.reduce((s, x) => s + x.n.kcal, 0));
     const calEaten = todayIntake().reduce((s, it) => s + (it.kcal || 0), 0);
     const calGoal = state.calGoal;
     const calPct = calGoal ? Math.min(100, Math.round(calEaten / calGoal * 100)) : (calEaten ? 100 : 0);
     const calOver = calGoal && calEaten > calGoal;
-    const shopCount = L.aggregateShopping(C, state.shop.sources).length;
     const tip = tipOfDay();
     const wo = ensureWorkout();
     const woDone = doneToday();
+    const streak = currentStreak();
     let i = 0; const di = () => `style="--i:${i++}"`;
     return `<div class="stagger">
       <div class="greet" ${di()}>
@@ -280,9 +279,9 @@
       </div>
 
       <div class="stats" ${di()}>
-        <div class="stat"><div class="stat-ic">🍽️</div><div class="stat-val">${meals.length}</div><div class="stat-lbl">Mahlzeiten</div></div>
-        <div class="stat"><div class="stat-ic">⏱️</div><div class="stat-val">${esc(p.timePerDay)}′</div><div class="stat-lbl">Workout</div></div>
-        <div class="stat"><div class="stat-ic">🛒</div><div class="stat-val">${shopCount}</div><div class="stat-lbl">Einkauf</div></div>
+        <button class="stat" data-go="fortschritt"><div class="stat-ic">🔥</div><div class="stat-val">${streak}</div><div class="stat-lbl">${streak === 1 ? 'Tag' : 'Tage'}-Serie</div></button>
+        <button class="stat" data-go="tracker"><div class="stat-ic">🍽️</div><div class="stat-val">${calGoal ? Math.max(0, calGoal - calEaten) : calEaten}</div><div class="stat-lbl">${calGoal ? 'kcal übrig' : 'kcal heute'}</div></button>
+        <button class="stat" data-go="training"><div class="stat-ic">${woDone ? '✅' : '💪'}</div><div class="stat-val">${wo.items.length}</div><div class="stat-lbl">${woDone ? 'erledigt' : 'Übungen'}</div></button>
       </div>
 
       <button class="cal-card" data-go="tracker" ${di()}>
