@@ -231,6 +231,11 @@ button { font-family: inherit; cursor: pointer; }
 .glass.full { background: linear-gradient(180deg, #7FB5E6, #4A90D9); border-color: #4A90D9; }
 .glass:active { transform: scale(.92); }
 
+/* ===== Coach-Schnellfragen ===== */
+.coach-suggest { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: var(--s3); }
+.suggest-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; text-align: left; box-shadow: var(--shadow-sm); }
+.suggest-chip:active { transform: scale(.97); }
+
 /* ===== Listen / Leer ===== */
 .empty-hint { text-align: center; color: var(--text-2); padding: var(--s6) var(--s4); }
 .empty-hint .eh-emoji { font-size: 44px; display: block; margin-bottom: var(--s2); }

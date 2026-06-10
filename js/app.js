@@ -1322,6 +1322,13 @@
   }
 
   // ===== KI-Chat =====
+  const COACH_SUGGESTIONS = [
+    '💪 Erstell mir einen Trainingsplan für diese Woche',
+    '🥗 Was soll ich heute essen?',
+    '⚖️ Wie nehme ich gesund ab?',
+    '🔋 Tipps für mehr Energie im Alltag',
+    '🧬 Welche Nährstoffe sind für mich wichtig?'
+  ];
   function renderCoachPicker() {
     app.innerHTML = `<div class="screen">
       <div class="page-head">
@@ -1375,6 +1382,7 @@
           <button class="btn btn-green" id="coach-consent" style="margin-top:10px">Ich verstehe – zustimmen</button>
         </div>`}
         <div class="chat-list" id="chat-list">${list}</div>
+        ${!msgs.length && !noEndpoint ? `<div class="coach-suggest">${COACH_SUGGESTIONS.map(s => `<button class="suggest-chip" data-suggest="${esc(s)}">${esc(s)}</button>`).join('')}</div>` : ''}
         <div class="chat-input-row">
           ${SR ? `<button class="chat-mic" id="chat-mic" ${noEndpoint ? 'disabled' : ''} aria-label="Sprechen">🎤</button>` : ''}
           <textarea class="chat-input" id="chat-input" rows="1" placeholder="Frag ${esc(av.name)}…" ${noEndpoint ? 'disabled' : ''}></textarea>
@@ -1396,6 +1404,7 @@
     const fire = () => { const t = input.value.trim(); if (t && !state.chatBusy) sendToKI(t); };
     send.onclick = fire;
     input.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); fire(); } };
+    app.querySelectorAll('[data-suggest]').forEach(el => el.onclick = () => { if (!state.chatBusy) sendToKI(el.dataset.suggest); });
     const speaker = document.getElementById('ki-speaker');
     if (speaker) speaker.onclick = () => { state.voiceOut = !state.voiceOut; save('gapp.voice', state.voiceOut); if (!state.voiceOut && ttsOk) speechSynthesis.cancel(); renderChat(); };
     const mic = document.getElementById('chat-mic');
