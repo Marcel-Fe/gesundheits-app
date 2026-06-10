@@ -11,7 +11,8 @@
   const C = window.GCONTENT;
   const L = window.GLOGIC;
   const K = window.GKNOW;
-  const STORE = { profile: 'gapp.profile', chat: 'gapp.chat', plan: 'gapp.plan', shop: 'gapp.shop', workout: 'gapp.workout', intake: 'gapp.intake', calGoal: 'gapp.calgoal', weight: 'gapp.weight' };
+  const STORE = { profile: 'gapp.profile', chat: 'gapp.chat', plan: 'gapp.plan', shop: 'gapp.shop', workout: 'gapp.workout', intake: 'gapp.intake', calGoal: 'gapp.calgoal', weight: 'gapp.weight', water: 'gapp.water' };
+  const WATER_GOAL = 8; // Gläser à 250 ml = 2 L Tagesziel
 
   const load = (key, fb) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fb; } catch { return fb; } };
   const save = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { console.warn('save fehlgeschlagen', e); } };
@@ -63,7 +64,7 @@
     intake: load(STORE.intake, {}), calGoal: load(STORE.calGoal, null), foodQuery: '',
     voiceOut: load('gapp.voice', false), listening: false,
     coachAvatar: load('gapp.coachAvatar', null), coachConsent: load('gapp.coachConsent', false),
-    weight: load(STORE.weight, [])
+    weight: load(STORE.weight, []), water: load(STORE.water, {})
   };
   const coachAvatarById = id => (D.coachAvatars || []).find(a => a.id === id) || null;
   let recog = null;
@@ -1048,6 +1049,18 @@
   const MEAL_GRAD = { breakfast: 'sunrise', lunch: 'amber', dinner: 'terracotta', snack: 'sage' };
   const MEAL_SHARE = { breakfast: 0.25, lunch: 0.35, dinner: 0.30, snack: 0.10 };
 
+  function renderWaterCard() {
+    const count = state.water[todayKey()] || 0;
+    const liters = (count * 0.25).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const glasses = Array.from({ length: WATER_GOAL }, (_, i) =>
+      `<button class="glass ${i < count ? 'full' : ''}" data-glass="${i}" aria-label="Glas ${i + 1}"></button>`).join('');
+    return `<div class="card">
+      <div class="card-title">💧 Wasser <span class="muted" style="font-weight:600">· ${count} / ${WATER_GOAL} Gläser · ${liters} L</span></div>
+      <div class="water-glasses">${glasses}</div>
+      <p class="muted" style="margin-top:8px">${count >= WATER_GOAL ? '🎉 Tagesziel erreicht – stark!' : 'Tippe ein Glas an, wenn du getrunken hast (250 ml).'}</p>
+    </div>`;
+  }
+
   function renderTracker() {
     const items = todayIntake();
     const goal = state.calGoal;
@@ -1128,6 +1141,8 @@
             <input class="chat-input" id="cal-goal-input" inputmode="numeric" value="${goal}" />
             <button class="chat-send" id="cal-goal-save">✓</button></div></div>
       </div>
+
+      ${renderWaterCard()}
 
       <div class="track-actions">
         <button class="btn btn-green" data-go="scan">📷 Barcode</button>
@@ -1510,6 +1525,12 @@
       if (idx >= 0) arr.splice(idx, 1);
       if (!arr.length) delete state.intake[k];
       save(STORE.intake, state.intake); render();
+    });
+    app.querySelectorAll('[data-glass]').forEach(el => el.onclick = () => {
+      const i = Number(el.dataset.glass), k = todayKey(), cur = state.water[k] || 0;
+      const next = (i + 1 === cur) ? i : i + 1; // erneutes Tippen aufs letzte volle Glas leert es wieder
+      if (next > 0) state.water[k] = next; else delete state.water[k];
+      save(STORE.water, state.water); render();
     });
     const wtSave = document.getElementById('wt-save');
     if (wtSave) wtSave.onclick = () => {
