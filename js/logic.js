@@ -103,6 +103,24 @@
     return ((diff % 7) + 7) % 7;
   };
 
+  // Einzelne Mahlzeit neu würfeln (Diät/Budget wie generateWeek; keine Tagesdoubletten).
+  // rand: 0..1 (injizierbar für Tests). Gibt die neue recipeId zurück oder null.
+  function swapMeal(content, profile, plan, dayIndex, slot, rand) {
+    const day = plan.days[dayIndex];
+    const meal = day && day.meals.find(m => m.slot === slot);
+    if (!meal) return null;
+    const max = budgetMax(profile.budget);
+    const ok = r => dietAllowed(profile.dietType, r.diet) && recipeCost(content, r).perServing <= max;
+    const catOk = r => slot === 'breakfast' ? r.category === 'breakfast' : (r.category === 'lunch' || r.category === 'dinner');
+    const usedToday = new Set(day.meals.map(m => m.recipeId));
+    let pool = content.recipes.filter(r => ok(r) && catOk(r) && !usedToday.has(r.id));
+    if (!pool.length) pool = content.recipes.filter(r => ok(r) && catOk(r) && r.id !== meal.recipeId);
+    if (!pool.length) return null;
+    const i = Math.floor((rand != null ? rand : Math.random()) * pool.length);
+    meal.recipeId = pool[Math.min(i, pool.length - 1)].id;
+    return meal.recipeId;
+  }
+
   // Einkaufsliste: gleiche Lebensmittel über alle Mahlzeiten zusammenführen.
   function aggregateShopping(content, items) {
     const map = new Map();
@@ -211,7 +229,7 @@
 
   const GLOGIC = {
     foodById, gramsOf, costOf, recipeNutrients, recipeCost, scaleIngredients,
-    budgetMax, dietAllowed, generateWeek, todayIndex, aggregateShopping, formatAmount,
+    budgetMax, dietAllowed, generateWeek, swapMeal, todayIndex, aggregateShopping, formatAmount,
     exerciseById, workoutSize, exerciseTarget, generateWorkout, advanceProgress,
     sessionById, recommendedSessions
   };

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'gesundheitsapp-v22';
+const CACHE_VERSION = 'gesundheitsapp-v23';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -6,12 +6,12 @@ const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const CORE_ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=22',
-  './js/data.js?v=22',
-  './js/content.js?v=22',
-  './js/knowledge.js?v=22',
-  './js/logic.js?v=22',
-  './js/app.js?v=22',
+  './css/styles.css?v=23',
+  './js/data.js?v=23',
+  './js/content.js?v=23',
+  './js/knowledge.js?v=23',
+  './js/logic.js?v=23',
+  './js/app.js?v=23',
   './manifest.json',
   './icons/icon.svg',
   './icons/icon-192.png',

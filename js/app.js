@@ -343,11 +343,14 @@
       const rows = day.meals.map(m => {
         const r = recipeById(m.recipeId);
         const n = L.recipeNutrients(C, r).perServing;
-        return `<button class="row-card" data-recipe="${r.id}">
-          ${thumb('row-thumb', r.grad, r.emoji, r.id)}
-          <div class="row-main"><div class="row-title">${esc(r.name)}</div>
-            <div class="row-sub">${SLOT[m.slot]} · ${Math.round(n.kcal)} kcal · ${m.servings} Port.</div></div>
-          <div class="row-chev">›</div></button>`;
+        return `<div class="swap-row">
+          <button class="row-card" data-recipe="${r.id}">
+            ${thumb('row-thumb', r.grad, r.emoji, r.id)}
+            <div class="row-main"><div class="row-title">${esc(r.name)}</div>
+              <div class="row-sub">${SLOT[m.slot]} · ${Math.round(n.kcal)} kcal · ${m.servings} Port.</div></div>
+            <div class="row-chev">›</div></button>
+          <button class="swap-btn" data-swapday="${i}" data-swapslot="${m.slot}" aria-label="${esc(r.name)} tauschen">🔄</button>
+        </div>`;
       }).join('');
       return `<div class="day-block"><div class="day-label ${i === today ? 'today' : ''}">${esc(wd)}</div>${rows}</div>`;
     }).join('');
@@ -1493,6 +1496,12 @@
     };
     const rg = document.getElementById('regen');
     if (rg) rg.onclick = () => { state.plan = L.generateWeek(C, state.profile); save(STORE.plan, state.plan); render(); };
+    app.querySelectorAll('[data-swapday]').forEach(el => el.onclick = () => {
+      const id = L.swapMeal(C, state.profile, state.plan, Number(el.dataset.swapday), el.dataset.swapslot);
+      if (!id) { toast('Kein anderes Rezept verfügbar'); return; }
+      save(STORE.plan, state.plan); render();
+      toast(`🔄 ${recipeById(id).name}`);
+    });
     const clr = document.getElementById('shop-clear');
     if (clr) clr.onclick = () => { state.shop = { sources: [], checked: {}, extras: [] }; save(STORE.shop, state.shop); render(); };
     app.querySelectorAll('[data-food]').forEach(el => el.onclick = () => {

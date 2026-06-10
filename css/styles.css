@@ -231,6 +231,12 @@ button { font-family: inherit; cursor: pointer; }
 .glass.full { background: linear-gradient(180deg, #7FB5E6, #4A90D9); border-color: #4A90D9; }
 .glass:active { transform: scale(.92); }
 
+/* ===== Wochenplan: Mahlzeit tauschen ===== */
+.swap-row { display: flex; align-items: stretch; gap: var(--s2); margin-bottom: var(--s2); }
+.swap-row .row-card { margin-bottom: 0; flex: 1; min-width: 0; }
+.swap-btn { flex: 0 0 44px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface-2); font-size: 17px; cursor: pointer; transition: transform .1s ease; }
+.swap-btn:active { transform: rotate(180deg) scale(.95); }
+
 /* ===== Coach-Schnellfragen ===== */
 .coach-suggest { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: var(--s3); }
 .suggest-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; text-align: left; box-shadow: var(--shadow-sm); }
