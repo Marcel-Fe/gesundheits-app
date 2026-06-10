@@ -11,11 +11,12 @@
   const C = window.GCONTENT;
   const L = window.GLOGIC;
   const K = window.GKNOW;
-  const STORE = { profile: 'gapp.profile', chat: 'gapp.chat', plan: 'gapp.plan', shop: 'gapp.shop', workout: 'gapp.workout', intake: 'gapp.intake', calGoal: 'gapp.calgoal' };
+  const STORE = { profile: 'gapp.profile', chat: 'gapp.chat', plan: 'gapp.plan', shop: 'gapp.shop', workout: 'gapp.workout', intake: 'gapp.intake', calGoal: 'gapp.calgoal', weight: 'gapp.weight' };
 
   const load = (key, fb) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fb; } catch { return fb; } };
   const save = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { console.warn('save fehlgeschlagen', e); } };
-  const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const dayKeyOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const todayKey = () => dayKeyOf(new Date());
   const todayIntake = () => state.intake[todayKey()] || [];
   let toastTimer = null;
   function toast(msg) {
@@ -61,7 +62,8 @@
     vitaminId: null, sessionId: null, foodId: null,
     intake: load(STORE.intake, {}), calGoal: load(STORE.calGoal, null), foodQuery: '',
     voiceOut: load('gapp.voice', false), listening: false,
-    coachAvatar: load('gapp.coachAvatar', null), coachConsent: load('gapp.coachConsent', false)
+    coachAvatar: load('gapp.coachAvatar', null), coachConsent: load('gapp.coachConsent', false),
+    weight: load(STORE.weight, [])
   };
   const coachAvatarById = id => (D.coachAvatars || []).find(a => a.id === id) || null;
   let recog = null;
@@ -140,6 +142,7 @@
     if (state.route === 'scan') { renderScan(); nav.hidden = false; renderNav(); return; }
     if (state.route === 'tracker') { app.innerHTML = `<div class="screen">${renderTracker()}</div>`; nav.hidden = false; renderNav(); bindView(); return; }
     if (state.route === 'verlauf') { app.innerHTML = `<div class="screen">${renderVerlauf()}</div>`; nav.hidden = false; renderNav(); bindView(); return; }
+    if (state.route === 'fortschritt') { app.innerHTML = `<div class="screen">${renderFortschritt()}</div>`; nav.hidden = false; renderNav(); bindView(); return; }
     nav.hidden = false;
     renderNav();
     const view = { dashboard: renderDashboard, ernaehrung: renderErnaehrung, training: renderTraining, einkauf: renderEinkauf }[state.route] || renderDashboard;
@@ -714,6 +717,7 @@
         ? '<div class="row-card" style="justify-content:center;color:var(--green);font-weight:700">✅ Heute geschafft — stark!</div>'
         : '<button class="btn btn-green" id="wo-done" style="margin-top:8px">✅ Workout abschließen</button>'}
       <button class="btn btn-ghost" id="wo-regen" style="margin-top:10px">🔄 Anderes Workout</button>
+      <button class="btn btn-ghost" data-go="fortschritt" style="margin-top:10px">📈 Mein Fortschritt</button>
 
       <div class="health-banner" style="background:linear-gradient(135deg,#A78BFA,#7C5CFC);margin-top:24px">
         <span class="hb-ic">🎯</span>
@@ -768,7 +772,7 @@
       { head: '💪 Training', items: [
         { ic: '🔥', t: 'Heutiges Workout', go: 'training' },
         { ic: '📚', t: 'Übungs-Bibliothek', go: 'training' },
-        { ic: '📈', t: `Fortschritt (${total} Workouts)`, go: 'training' }
+        { ic: '📈', t: `Fortschritt (${total} Workouts)`, go: 'fortschritt' }
       ] },
       { head: '🛒 Einkaufen', items: [
         { ic: '🧾', t: 'Einkaufsliste', go: 'einkauf' },
@@ -1174,6 +1178,80 @@
       ${pairs.length ? `<button class="btn btn-ghost" id="verlauf-clear" style="margin-top:16px">🧹 Alles löschen</button>` : ''}`;
   }
 
+  // ===== Fortschritt (Gewichtsverlauf, Streak, Statistiken) =====
+  function activeDayKeys() {
+    const set = new Set();
+    (state.workoutStore.history || []).forEach(h => set.add(dayKeyOf(new Date(h.date))));
+    Object.keys(state.intake || {}).forEach(k => set.add(k));
+    (state.weight || []).forEach(w => set.add(w.date));
+    return set;
+  }
+  function currentStreak() {
+    const set = activeDayKeys();
+    const d = new Date();
+    if (!set.has(dayKeyOf(d))) d.setDate(d.getDate() - 1); // heute ist optional, bricht die Serie nicht
+    let streak = 0;
+    while (set.has(dayKeyOf(d))) { streak++; d.setDate(d.getDate() - 1); }
+    return streak;
+  }
+  function weightChart(entries) {
+    if (entries.length < 2) return '<p class="muted" style="text-align:center;margin-top:8px">Trage an mehreren Tagen dein Gewicht ein, um den Verlauf zu sehen.</p>';
+    const data = entries.slice(-20);
+    const W = 320, H = 120, pad = 24, n = data.length;
+    const kgs = data.map(e => e.kg), min = Math.min(...kgs), max = Math.max(...kgs), range = (max - min) || 1;
+    const x = i => pad + (n === 1 ? 0 : i * (W - 2 * pad) / (n - 1));
+    const y = kg => pad + (H - 2 * pad) * (1 - (kg - min) / range);
+    const pts = data.map((e, i) => `${x(i).toFixed(1)},${y(e.kg).toFixed(1)}`).join(' ');
+    const dots = data.map((e, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(e.kg).toFixed(1)}" r="3" fill="var(--green)"/>`).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" class="wt-chart" aria-hidden="true">
+      <polyline points="${pts}" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}
+      <text x="2" y="${pad + 4}" class="wt-ax">${max.toFixed(1)}</text>
+      <text x="2" y="${H - pad + 4}" class="wt-ax">${min.toFixed(1)}</text></svg>`;
+  }
+  function renderFortschritt() {
+    const w = (state.weight || []).slice().sort((a, b) => a.date < b.date ? -1 : 1);
+    const last = w[w.length - 1], first = w[0];
+    const change = w.length >= 2 ? Math.round((last.kg - first.kg) * 10) / 10 : null;
+    const workouts = (state.workoutStore.history || []).length;
+    const days = Object.keys(state.intake || {}).length;
+    const streak = currentStreak();
+    const todayW = w.find(e => e.date === todayKey());
+    const changeStr = change === null ? '—' : `${change > 0 ? '+' : ''}${change} kg`;
+    const changeColor = change === null ? '' : change <= 0 ? 'var(--green)' : '#E2725B';
+    const recent = (state.workoutStore.history || []).slice(-6).reverse().map(h => {
+      const s = L.sessionById(C, h.session);
+      const dt = new Date(h.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
+      return `<div class="meal-item"><span class="meal-item-name">${s ? esc(s.emoji + ' ' + s.name) : '💪 Workout'}</span><span class="meal-item-kcal">${dt}</span></div>`;
+    }).join('');
+    return `<div class="page-head">
+        <button class="btn btn-ghost" id="simple-back" style="width:auto;padding:8px 14px">← Zurück</button>
+        <h1 class="page-title" style="margin-top:12px">Mein Fortschritt</h1>
+        <p class="page-sub">Dranbleiben zahlt sich aus – Schritt für Schritt.</p></div>
+
+      <div class="nutri-grid">
+        <div class="nutri"><div class="nutri-val">${last ? last.kg : '—'}${last ? '<span style="font-size:13px"> kg</span>' : ''}</div><div class="nutri-lbl">Gewicht</div></div>
+        <div class="nutri"><div class="nutri-val" style="color:${changeColor}">${changeStr}</div><div class="nutri-lbl">Veränderung</div></div>
+        <div class="nutri"><div class="nutri-val">🔥 ${streak}</div><div class="nutri-lbl">Tage-Serie</div></div>
+        <div class="nutri"><div class="nutri-val">${workouts}</div><div class="nutri-lbl">Workouts</div></div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="card-title">⚖️ Gewicht</div>
+        ${weightChart(w)}
+        <div class="kcal-portion" style="margin-top:10px">
+          <label>Heute</label>
+          <input id="wt-input" inputmode="decimal" value="${todayW ? todayW.kg : ''}" placeholder="kg" />
+          <span>kg</span>
+          <button class="chat-send" id="wt-save">✓</button>
+        </div>
+        <p class="muted" style="margin-top:6px">${days} ${days === 1 ? 'Tag' : 'Tage'} mit Kalorien getrackt.</p>
+      </div>
+
+      <div class="section-title">Letzte Workouts</div>
+      ${recent ? `<div class="card">${recent}</div>` : '<div class="empty-hint"><span class="eh-emoji">💪</span>Noch keine Workouts abgeschlossen. Starte im Training!</div>'}`;
+  }
+
   // ===== Sprachfunktion (Web Speech API, kostenlos, im Browser) =====
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const ttsOk = 'speechSynthesis' in window;
@@ -1434,6 +1512,16 @@
       if (!arr.length) delete state.intake[k];
       save(STORE.intake, state.intake); render();
     });
+    const wtSave = document.getElementById('wt-save');
+    if (wtSave) wtSave.onclick = () => {
+      const v = parseFloat((document.getElementById('wt-input').value || '').replace(',', '.'));
+      if (!v || v <= 0 || v > 400) { toast('Bitte gültiges Gewicht eingeben'); return; }
+      const k = todayKey();
+      state.weight = (state.weight || []).filter(e => e.date !== k);
+      state.weight.push({ date: k, kg: Math.round(v * 10) / 10 });
+      save(STORE.weight, state.weight);
+      toast('✓ Gewicht gespeichert'); render();
+    };
     const manualToggle = document.getElementById('manual-toggle');
     if (manualToggle) manualToggle.onclick = () => { state.manualOpen = !state.manualOpen; render(); };
     app.querySelectorAll('[data-trackcat]').forEach(el => el.onclick = () => { state.trackerCat = el.dataset.trackcat; state.manualOpen = true; render(); });

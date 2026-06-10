@@ -221,6 +221,10 @@ button { font-family: inherit; cursor: pointer; }
 .coach-tag { color: var(--text-2); font-size: 12px; font-weight: 600; }
 .consent-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s3) var(--s4); margin-bottom: var(--s3); box-shadow: var(--shadow-sm); }
 
+/* ===== Fortschritt: Gewichts-Chart ===== */
+.wt-chart { width: 100%; height: auto; display: block; margin-top: 4px; }
+.wt-ax { fill: var(--text-2); font-size: 10px; font-weight: 600; }
+
 /* ===== Listen / Leer ===== */
 .empty-hint { text-align: center; color: var(--text-2); padding: var(--s6) var(--s4); }
 .empty-hint .eh-emoji { font-size: 44px; display: block; margin-bottom: var(--s2); }
