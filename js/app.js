@@ -647,6 +647,32 @@
   }
 
   // ===== Einkaufsliste =====
+  // Offene (nicht abgehakte) Artikel als Klartext – zum Teilen/Kopieren.
+  function shoppingListText() {
+    const rows = L.aggregateShopping(C, state.shop.sources).filter(r => !state.shop.checked[r.foodId]);
+    const extras = (state.shop.extras || []).filter((e, i) => !state.shop.checked['x' + i]);
+    const lines = [];
+    let lastCat = null;
+    for (const r of rows) {
+      if (r.cat !== lastCat) { lines.push(`${lines.length ? '\n' : ''}${r.cat}:`); lastCat = r.cat; }
+      lines.push(`• ${r.name} – ${L.formatAmount(r.amount, r.unit)}`);
+    }
+    if (extras.length) {
+      lines.push(`${lines.length ? '\n' : ''}Extra:`);
+      extras.forEach(e => lines.push(`• ${e.name}`));
+    }
+    if (!lines.length) return null;
+    return `🛒 Einkaufsliste (${rows.length + extras.length} Artikel)\n\n${lines.join('\n')}`;
+  }
+  async function shareShoppingList() {
+    const text = shoppingListText();
+    if (!text) { toast('Alles abgehakt – nichts zu teilen 🎉'); return; }
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Einkaufsliste', text }); return; } catch { /* abgebrochen → Fallback */ }
+    }
+    try { await navigator.clipboard.writeText(text); toast('✓ Liste kopiert'); }
+    catch { toast('Teilen nicht möglich'); }
+  }
   function renderEinkauf() {
     const rows = L.aggregateShopping(C, state.shop.sources);
     const extras = state.shop.extras || [];
@@ -678,7 +704,8 @@
       ${rows.length ? `<div class="budget-bar"><div><div class="muted">Geschätzte Kosten</div><b>${total.toFixed(2).replace('.', ',')} €</b></div>
         <div style="text-align:right"><div class="muted">noch offen</div><b style="color:var(--green)">${open.toFixed(2).replace('.', ',')} €</b></div></div>` : ''}
       ${html}
-      <button class="btn btn-ghost" id="shop-clear" style="margin-top:20px">Liste leeren</button>`;
+      <button class="btn btn-green" id="shop-share" style="margin-top:20px">📤 Liste teilen</button>
+      <button class="btn btn-ghost" id="shop-clear" style="margin-top:10px">Liste leeren</button>`;
   }
 
   function sessionCard(s) {
@@ -1504,6 +1531,8 @@
     });
     const clr = document.getElementById('shop-clear');
     if (clr) clr.onclick = () => { state.shop = { sources: [], checked: {}, extras: [] }; save(STORE.shop, state.shop); render(); };
+    const shr = document.getElementById('shop-share');
+    if (shr) shr.onclick = shareShoppingList;
     app.querySelectorAll('[data-food]').forEach(el => el.onclick = () => {
       const id = el.dataset.food; state.shop.checked[id] = !state.shop.checked[id]; save(STORE.shop, state.shop); render();
     });
