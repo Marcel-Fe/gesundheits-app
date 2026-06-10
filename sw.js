@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'gesundheitsapp-v24';
+const CACHE_VERSION = 'gesundheitsapp-v26';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -6,16 +6,33 @@ const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const CORE_ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=24',
-  './js/data.js?v=24',
-  './js/content.js?v=24',
-  './js/knowledge.js?v=24',
-  './js/logic.js?v=24',
-  './js/app.js?v=24',
+  './css/styles.css?v=26',
+  './js/data.js?v=26',
+  './js/content/foods.js?v=26',
+  './js/content/recipes.js?v=26',
+  './js/content/exercises.js?v=26',
+  './js/content/sessions.js?v=26',
+  './js/content.js?v=26',
+  './js/knowledge.js?v=26',
+  './js/logic.js?v=26',
+  './js/app/core.js?v=26',
+  './js/app/screens-start.js?v=26',
+  './js/app/ernaehrung.js?v=26',
+  './js/app/wissen.js?v=26',
+  './js/app/training.js?v=26',
+  './js/app/tracker.js?v=26',
+  './js/app/coach.js?v=26',
+  './js/app/main.js?v=26',
   './manifest.json',
   './icons/icon.svg',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './icons/coach/max.png',
+  './icons/coach/david.png',
+  './icons/coach/alex.png',
+  './icons/coach/sarah.png',
+  './icons/coach/lisa.png',
+  './icons/coach/emma.png'
 ];
 
 // Install: Kern-Assets cachen + sofort aktiv werden
