@@ -54,23 +54,91 @@ function buildPlaySteps(s) {
   }
   return steps;
 }
-function playSpeak(text) {
-  if (!state.playVoice || !ttsOk) return;
+// Neutrale Ansagen, falls (noch) kein Coach gewählt ist.
+const PLAY_LINES_DEFAULT = {
+  start: ['Los geht\'s!'],
+  work: ['{ex}. {target}. Satz {set} von {sets}. Los!'],
+  rest: ['Pause. Als Nächstes: {next}.'],
+  half: ['Die Hälfte ist geschafft!'],
+  count3: ['Noch drei Sekunden'],
+  finish: ['Stark! Workout geschafft.']
+};
+// Ansage im Charakter des gewählten Coaches (zufällige Variante, Platzhalter füllen).
+function coachLine(kind, vars) {
+  const av = coachAvatarById(state.coachAvatar);
+  const pool = (av && av.lines && av.lines[kind]) || PLAY_LINES_DEFAULT[kind];
+  let t = pool[Math.floor(Math.random() * pool.length)] || '';
+  for (const k in (vars || {})) t = t.split('{' + k + '}').join(vars[k]);
+  return t;
+}
+const coachTtsVoice = () => { const av = coachAvatarById(state.coachAvatar); return (av && av.voiceTts) || 'Kore'; };
+// Geräte-Stimme (Web Speech) – Fallback, wenn die natürliche Stimme nicht verfügbar ist.
+function deviceSpeak(text, hooks) {
+  if (!ttsOk) return;
   try {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'de-DE'; u.rate = 1.0;
-    const v = speechSynthesis.getVoices().find(x => x.lang && x.lang.toLowerCase().startsWith('de'));
+    u.lang = 'de-DE'; u.rate = 1.05;
+    const av = coachAvatarById(state.coachAvatar);
+    const v = av ? pickVoice(av.gender)
+      : speechSynthesis.getVoices().find(x => x.lang && x.lang.toLowerCase().startsWith('de'));
     if (v) u.voice = v;
+    if (hooks) { u.onstart = hooks.onstart; u.onend = hooks.onend; u.onerror = hooks.onend; }
     speechSynthesis.speak(u);
   } catch {}
+}
+// instant=true: keine Wartezeit erlaubt (z. B. Countdown) – natürliche Stimme nur aus dem Cache.
+function playSpeak(text, instant) {
+  // Sprechblase immer aktualisieren – so "spricht" der Coach auch ohne Ton.
+  const line = document.getElementById('coach-line');
+  if (line) line.textContent = text;
+  if (!state.playVoice) return;
+  const hooks = {
+    onstart: () => { const p = document.getElementById('play-coach'); if (p) p.classList.add('talking'); },
+    onend: () => { const p = document.getElementById('play-coach'); if (p) p.classList.remove('talking'); }
+  };
+  if (ttsOk) { try { speechSynthesis.cancel(); } catch {} }
+  stopNatural();
+  const voice = coachTtsVoice();
+  if (instant && !ttsCached(text, voice)) {
+    ttsFetch(text, voice); // fürs nächste Mal vorwärmen
+    deviceSpeak(text, hooks);
+    return;
+  }
+  naturalSpeak(text, voice, hooks).then(ok => { if (!ok) deviceSpeak(text, hooks); });
+}
+// Alle Ansagen des Workouts im Hintergrund vorab laden (max. 2 parallel).
+function prefetchPlayLines() {
+  const voice = coachTtsVoice();
+  const texts = [];
+  state.playSteps.forEach(st => { if (st.line) texts.push(st.line); });
+  ['half', 'count3', 'finish'].forEach(kind => {
+    const av = coachAvatarById(state.coachAvatar);
+    const pool = (av && av.lines && av.lines[kind]) || PLAY_LINES_DEFAULT[kind];
+    pool.forEach(t => texts.push(t));
+  });
+  let i = 0;
+  const next = () => { if (i >= texts.length) return; const t = texts[i++]; ttsFetch(t, voice).then(next); };
+  next(); next();
 }
 function startPlay(sessionId) {
   const s = L.sessionById(C, sessionId);
   if (!s || !s.items.length) return;
   if (state.playVoice === undefined) state.playVoice = true;
+  ttsUnlock(); // im Klick-Kontext: schaltet Audio-Wiedergabe frei (iOS/Android)
   state.playSession = sessionId;
   state.playSteps = buildPlaySteps(s);
+  // Ansagen jetzt festlegen (Zufallsvariante je Schritt) → vorab ladbar
+  state.playSteps.forEach((st, i) => {
+    if (st.kind === 'work') {
+      const target = st.isHold ? `${st.hold} Sekunden halten` : `${st.reps} Wiederholungen`;
+      const intro = i === 0 ? coachLine('start') + ' ' : '';
+      st.line = intro + coachLine('work', { ex: st.ex.name, target, set: st.set, sets: st.sets });
+    } else {
+      st.line = coachLine('rest', { next: st.nextEx ? st.nextEx.name : 'fertig' });
+    }
+  });
+  prefetchPlayLines();
   state.playIdx = 0;
   state.playRemaining = state.playSteps[0].dur;
   state.playPaused = false;
@@ -82,23 +150,22 @@ function startPlay(sessionId) {
 function stopPlay() {
   if (playTimer) { clearInterval(playTimer); playTimer = null; }
   if (ttsOk) { try { speechSynthesis.cancel(); } catch {} }
+  stopNatural();
 }
 function announceStep() {
   const st = state.playSteps[state.playIdx];
   if (!st) return;
-  if (st.kind === 'work') {
-    const target = st.isHold ? `${st.hold} Sekunden halten` : `${st.reps} Wiederholungen`;
-    playSpeak(`${st.ex.name}. ${target}. Satz ${st.set} von ${st.sets}. Los!`);
-  } else {
-    playSpeak(`Pause. Als Nächstes: ${st.nextEx ? st.nextEx.name : 'fertig'}.`);
-  }
+  playSpeak(st.line || '');
 }
 function playTick() {
   if (state.playPaused || state.playDone) return;
   state.playRemaining--;
   const t = document.getElementById('play-time');
   if (t) t.textContent = Math.max(0, state.playRemaining);
-  if (state.playRemaining === 3) playSpeak('Noch drei Sekunden');
+  const st = state.playSteps[state.playIdx];
+  // Motivations-Zwischenruf zur Halbzeit längerer Arbeits-Sätze
+  if (st && st.kind === 'work' && st.dur >= 24 && state.playRemaining === Math.floor(st.dur / 2)) playSpeak(coachLine('half'), true);
+  if (state.playRemaining === 3) playSpeak(coachLine('count3'), true);
   if (state.playRemaining <= 0) advanceStep();
 }
 function advanceStep() {
@@ -111,13 +178,23 @@ function advanceStep() {
       state.workoutStore = { progress: state.workoutStore.progress || {}, history: [...(state.workoutStore.history || []), { date: Date.now(), count: s.items.length, session: s.id }] };
       save(STORE.workout, state.workoutStore); state.workout = null;
     }
-    playSpeak('Stark! Workout geschafft.');
+    const fin = coachLine('finish');
     renderPlay();
+    playSpeak(fin);
     return;
   }
   state.playRemaining = state.playSteps[state.playIdx].dur;
   renderPlay();
   announceStep();
+}
+// Coach-Streifen im Player: animiertes Porträt + Sprechblase (Text der letzten Ansage).
+function playCoachStrip() {
+  const av = coachAvatarById(state.coachAvatar);
+  if (!av) return '';
+  return `<div class="play-coach" id="play-coach">
+    <span class="coach-face g-${av.grad}">${av.emoji}<img src="icons/coach/${av.id}.png" alt="" onerror="this.remove()"></span>
+    <div class="play-coach-line" id="coach-line">${esc(av.name)} begleitet dich…</div>
+  </div>`;
 }
 function renderPlay() {
   if (state.playDone) {
@@ -127,6 +204,7 @@ function renderPlay() {
         <div class="play-done-emoji">🎉</div>
         <h1 class="page-title">Geschafft!</h1>
         <p class="page-sub">Du hast „${esc(s ? s.name : 'das Workout')}" komplett mitgemacht. Stark!</p>
+        ${playCoachStrip()}
         <button class="btn btn-green" id="play-finish" style="margin-top:20px">Fertig</button>
       </div></div>`;
     document.getElementById('play-finish').onclick = () => { stopPlay(); state.route = 'training'; render(); };
@@ -152,6 +230,7 @@ function renderPlay() {
     ${media}
     <h1 class="play-name">${isRest ? 'Als Nächstes' : esc(ex.name)}</h1>
     <p class="play-target">${isRest ? (st.nextEx ? esc(st.nextEx.name) : 'Gleich fertig') : target}</p>
+    ${playCoachStrip()}
     <div class="play-timer"><span id="play-time">${Math.max(0, state.playRemaining)}</span><small>Sek.</small></div>
     <div class="play-controls">
       <button class="btn btn-ghost" id="play-pause">${state.playPaused ? '▶️ Weiter' : '⏸️ Pause'}</button>
@@ -160,9 +239,9 @@ function renderPlay() {
   </div>`;
   if (!playTimer && !state.playDone) playTimer = setInterval(playTick, 1000);
   document.getElementById('play-quit').onclick = () => { stopPlay(); state.route = 'session'; render(); };
-  document.getElementById('play-sound').onclick = () => { state.playVoice = !state.playVoice; if (!state.playVoice && ttsOk) speechSynthesis.cancel(); renderPlay(); };
-  document.getElementById('play-pause').onclick = () => { state.playPaused = !state.playPaused; if (state.playPaused && ttsOk) speechSynthesis.cancel(); renderPlay(); };
-  document.getElementById('play-skip').onclick = () => { if (ttsOk) speechSynthesis.cancel(); advanceStep(); };
+  document.getElementById('play-sound').onclick = () => { state.playVoice = !state.playVoice; if (!state.playVoice) { if (ttsOk) speechSynthesis.cancel(); stopNatural(); } renderPlay(); };
+  document.getElementById('play-pause').onclick = () => { state.playPaused = !state.playPaused; if (state.playPaused) { if (ttsOk) speechSynthesis.cancel(); stopNatural(); } renderPlay(); };
+  document.getElementById('play-skip').onclick = () => { if (ttsOk) speechSynthesis.cancel(); stopNatural(); advanceStep(); };
 }
 
 // ===== Wissen: Vitamine & Nährstoffe =====

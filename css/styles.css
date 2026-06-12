@@ -241,6 +241,16 @@ button { font-family: inherit; cursor: pointer; }
 .swap-btn { flex: 0 0 44px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface-2); font-size: 17px; cursor: pointer; transition: transform .1s ease; }
 .swap-btn:active { transform: rotate(180deg) scale(.95); }
 
+/* ===== Coach im Workout-Player ===== */
+.play-coach { display: flex; align-items: center; gap: 10px; margin: 10px auto; max-width: 340px; }
+.play-coach .coach-face { width: 52px; height: 52px; font-size: 26px; flex: none; animation: coach-bob 2.6s ease-in-out infinite; }
+.play-coach.talking .coach-face { animation: coach-talk .4s ease-in-out infinite; box-shadow: 0 0 0 3px var(--green), 0 0 14px rgba(22,163,74,.45); }
+.play-coach-line { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 4px 14px 14px 14px; padding: 8px 12px; font-size: 13px; font-weight: 600; text-align: left; color: var(--text); box-shadow: var(--shadow-sm); }
+@keyframes coach-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes coach-talk { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+.face-talking { animation: coach-talk .4s ease-in-out infinite; box-shadow: 0 0 0 3px var(--green), 0 0 14px rgba(22,163,74,.45); }
+@media (prefers-reduced-motion: reduce) { .play-coach .coach-face { animation: none; } }
+
 /* ===== Coach-Schnellfragen ===== */
 .coach-suggest { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: var(--s3); }
 .suggest-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; text-align: left; box-shadow: var(--shadow-sm); }

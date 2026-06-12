@@ -44,16 +44,36 @@ function pickVoice(gender) {
   return de.find(v => re.test(v.name)) || de[0];
 }
 function speak(text) {
-  if (!state.voiceOut || !ttsOk) return;
-  try {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text.replace(/\*\*/g, '').replace(/[#>*_`]/g, '').slice(0, 700));
-    u.lang = 'de-DE'; u.rate = 1.0;
-    const av = coachAvatarById(state.coachAvatar);
-    const v = pickVoice(av ? av.gender : 'm');
-    if (v) u.voice = v;
-    speechSynthesis.speak(u);
-  } catch {}
+  if (!state.voiceOut) return;
+  // Markdown entfernen; für TTS auf ~280 Zeichen kürzen (am Satzende abschneiden).
+  let clean = text.replace(/\*\*/g, '').replace(/[#>*_`]/g, '').trim();
+  if (clean.length > 280) {
+    const cut = clean.slice(0, 280);
+    const end = Math.max(cut.lastIndexOf('.'), cut.lastIndexOf('!'), cut.lastIndexOf('?'));
+    clean = end > 80 ? cut.slice(0, end + 1) : cut;
+  }
+  const face = () => document.querySelector('.coach-bar .coach-face');
+  const hooks = {
+    onstart: () => { const f = face(); if (f) f.classList.add('face-talking'); },
+    onend: () => { const f = face(); if (f) f.classList.remove('face-talking'); }
+  };
+  const fallback = () => {
+    if (!ttsOk) return;
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(clean.slice(0, 700));
+      u.lang = 'de-DE'; u.rate = 1.0;
+      const av = coachAvatarById(state.coachAvatar);
+      const v = pickVoice(av ? av.gender : 'm');
+      if (v) u.voice = v;
+      u.onstart = hooks.onstart; u.onend = hooks.onend; u.onerror = hooks.onend;
+      speechSynthesis.speak(u);
+    } catch {}
+  };
+  if (ttsOk) { try { speechSynthesis.cancel(); } catch {} }
+  stopNatural();
+  const av = coachAvatarById(state.coachAvatar);
+  naturalSpeak(clean, (av && av.voiceTts) || 'Kore', hooks).then(ok => { if (!ok) fallback(); });
 }
 
 // ===== KI-Chat =====
@@ -139,12 +159,12 @@ function renderChat() {
   const input = document.getElementById('chat-input'), send = document.getElementById('chat-send'), listEl = document.getElementById('chat-list');
   listEl.scrollTop = listEl.scrollHeight;
   input.oninput = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 120) + 'px'; };
-  const fire = () => { const t = input.value.trim(); if (t && !state.chatBusy) sendToKI(t); };
+  const fire = () => { const t = input.value.trim(); if (t && !state.chatBusy) { ttsUnlock(); sendToKI(t); } };
   send.onclick = fire;
   input.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); fire(); } };
-  app.querySelectorAll('[data-suggest]').forEach(el => el.onclick = () => { if (!state.chatBusy) sendToKI(el.dataset.suggest); });
+  app.querySelectorAll('[data-suggest]').forEach(el => el.onclick = () => { if (!state.chatBusy) { ttsUnlock(); sendToKI(el.dataset.suggest); } });
   const speaker = document.getElementById('ki-speaker');
-  if (speaker) speaker.onclick = () => { state.voiceOut = !state.voiceOut; save('gapp.voice', state.voiceOut); if (!state.voiceOut && ttsOk) speechSynthesis.cancel(); renderChat(); };
+  if (speaker) speaker.onclick = () => { state.voiceOut = !state.voiceOut; save('gapp.voice', state.voiceOut); if (!state.voiceOut) { if (ttsOk) speechSynthesis.cancel(); stopNatural(); } else ttsUnlock(); renderChat(); };
   const mic = document.getElementById('chat-mic');
   if (mic) mic.onclick = () => startListening();
   if (state.listening && mic) mic.classList.add('listening');

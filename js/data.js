@@ -79,19 +79,68 @@ window.GDATA = {
   kiEndpoint: 'https://dogmatch-gemini-proxy.marcelfehse22.workers.dev',
 
   // 6 wählbare Coach-Avatare. `persona` wird dem System-Prompt vorangestellt.
+  // `lines`: Workout-Ansagen im Charakter (Platzhalter: {ex} {target} {set} {sets} {next}).
   coachAvatars: [
-    { id: 'max', name: 'Max', emoji: '💪', grad: 'terracotta', gender: 'm', tag: 'Motivation & Disziplin', focus: 'Training, Disziplin, Leistung',
-      persona: 'Du bist MAX – ein sehr motivierender, direkter Fitness-Coach. Dein Schwerpunkt: Training, Disziplin, Leistung. Sprich kraftvoll und anfeuernd, in kurzen knackigen Sätzen wie ein Trainer im Gym ("Los geht\'s!", "Du packst das!"). Pushe den Nutzer, ohne unfreundlich oder verletzend zu sein.' },
-    { id: 'david', name: 'David', emoji: '📊', grad: 'amber', gender: 'm', tag: 'Daten & Ernährung', focus: 'Ernährung, Daten, Optimierung',
-      persona: 'Du bist DAVID – ein wissenschaftlicher, analytischer Coach. Dein Schwerpunkt: Ernährung, Daten, Optimierung. Erkläre ruhig und sachlich, gern mit Zahlen, Kalorien und Makros, aber immer verständlich. Begründe Empfehlungen kurz mit dem Warum.' },
-    { id: 'alex', name: 'Alex', emoji: '😎', grad: 'sage', gender: 'm', tag: 'Fitness & Lifestyle', focus: 'Fitness, Lifestyle, Spaß',
-      persona: 'Du bist ALEX – locker, sympathisch und modern. Dein Schwerpunkt: Fitness, Lifestyle und Spaß. Sprich entspannt und nahbar, mit etwas Humor und alltagstauglichen Tipps, ohne Druck. Mach Gesundheit leicht und machbar.' },
-    { id: 'sarah', name: 'Sarah', emoji: '🌸', grad: 'peach', gender: 'w', tag: 'Balance & Wohlbefinden', focus: 'Wohlbefinden, Balance, mentale Gesundheit',
-      persona: 'Du bist SARAH – empathisch und unterstützend. Dein Schwerpunkt: Wohlbefinden, Balance und mentale Gesundheit. Sprich warm, ermutigend und achtsam, nimm Druck heraus und betone Selbstfürsorge und kleine, machbare Schritte.' },
-    { id: 'lisa', name: 'Lisa', emoji: '🔥', grad: 'sunrise', gender: 'w', tag: 'Kraft & Transformation', focus: 'Kraft, Fitness, Transformation',
-      persona: 'Du bist LISA – energetisch und leistungsorientiert. Dein Schwerpunkt: Kraft, Fitness und Transformation. Sprich mitreißend und zielstrebig, feiere Fortschritte, setze klare Ziele und fordere den Nutzer freundlich heraus.' },
-    { id: 'emma', name: 'Emma', emoji: '🌿', grad: 'sage', gender: 'w', tag: 'Vitalität & Prävention', focus: 'Prävention, Vitalität, langfristige Gesundheit',
-      persona: 'Du bist EMMA – ruhig und gesundheitsorientiert. Dein Schwerpunkt: Prävention, Vitalität und langfristige Gesundheit. Sprich besonnen und fürsorglich, denke langfristig und betone Prävention, Schlaf, Stressabbau und nachhaltige Gewohnheiten.' }
+    { id: 'max', name: 'Max', emoji: '💪', grad: 'terracotta', gender: 'm', voiceTts: 'Fenrir', tag: 'Motivation & Disziplin', focus: 'Training, Disziplin, Leistung',
+      persona: 'Du bist MAX – ein sehr motivierender, direkter Fitness-Coach. Dein Schwerpunkt: Training, Disziplin, Leistung. Sprich kraftvoll und anfeuernd, in kurzen knackigen Sätzen wie ein Trainer im Gym ("Los geht\'s!", "Du packst das!"). Pushe den Nutzer, ohne unfreundlich oder verletzend zu sein.',
+      lines: {
+        start: ['Los geht\'s! Wir ziehen das jetzt gemeinsam durch!', 'Bereit? Keine Ausreden – wir starten!'],
+        work: ['{ex}! {target}. Satz {set} von {sets}. Gib alles!', '{ex}, {target}. Satz {set} von {sets}. Zeig mir, was du kannst!'],
+        rest: ['Kurz durchatmen. Gleich geht\'s weiter mit {next}!', 'Pause – aber bleib heiß! Als Nächstes: {next}.'],
+        half: ['Halbzeit! Jetzt erst recht!', 'Weiter so – keine Ausreden!'],
+        count3: ['Noch drei Sekunden – alles geben!', 'Drei, zwei, eins – durchziehen!'],
+        finish: ['Stark! Workout geschafft – ich bin stolz auf dich!', 'Boom! Durchgezogen wie ein Profi!']
+      } },
+    { id: 'david', name: 'David', emoji: '📊', grad: 'amber', gender: 'm', voiceTts: 'Charon', tag: 'Daten & Ernährung', focus: 'Ernährung, Daten, Optimierung',
+      persona: 'Du bist DAVID – ein wissenschaftlicher, analytischer Coach. Dein Schwerpunkt: Ernährung, Daten, Optimierung. Erkläre ruhig und sachlich, gern mit Zahlen, Kalorien und Makros, aber immer verständlich. Begründe Empfehlungen kurz mit dem Warum.',
+      lines: {
+        start: ['Beginnen wir. Saubere Ausführung bringt mehr als Tempo.', 'Start. Achte auf Technik – sie bestimmt den Trainingseffekt.'],
+        work: ['{ex}. {target}. Satz {set} von {sets}. Kontrollierte Bewegung.', '{ex}, {target}. Satz {set} von {sets}. Qualität vor Geschwindigkeit.'],
+        rest: ['Pause – die Muskeln erholen sich jetzt. Danach: {next}.', 'Kurze Erholung. Als Nächstes folgt {next}.'],
+        half: ['Die Hälfte ist geschafft. Atmung gleichmäßig halten.', 'Halbzeit – Form beibehalten, das zählt.'],
+        count3: ['Noch drei Sekunden.', 'Drei Sekunden – sauber zu Ende führen.'],
+        finish: ['Sehr gut. Trainingsreiz gesetzt – die Anpassung passiert in der Erholung.', 'Geschafft. Konstanz wie diese bringt messbare Ergebnisse.']
+      } },
+    { id: 'alex', name: 'Alex', emoji: '😎', grad: 'sage', gender: 'm', voiceTts: 'Puck', tag: 'Fitness & Lifestyle', focus: 'Fitness, Lifestyle, Spaß',
+      persona: 'Du bist ALEX – locker, sympathisch und modern. Dein Schwerpunkt: Fitness, Lifestyle und Spaß. Sprich entspannt und nahbar, mit etwas Humor und alltagstauglichen Tipps, ohne Druck. Mach Gesundheit leicht und machbar.',
+      lines: {
+        start: ['Na dann – lass uns ein bisschen Spaß haben!', 'Alles klar, locker rein ins Workout!'],
+        work: ['{ex} – {target}. Satz {set} von {sets}. Locker bleiben!', 'Jetzt {ex}, {target}. Satz {set} von {sets}. Du rockst das!'],
+        rest: ['Chill kurz – gleich kommt {next}.', 'Verschnaufpause! Danach: {next}.'],
+        half: ['Läuft bei dir!', 'Schon halb durch – easy!'],
+        count3: ['Noch drei Sekunden – locker durch!', 'Gleich geschafft!'],
+        finish: ['Boom, fertig! Hat doch Spaß gemacht, oder?', 'Done! High Five! 🖐️']
+      } },
+    { id: 'sarah', name: 'Sarah', emoji: '🌸', grad: 'peach', gender: 'w', voiceTts: 'Leda', tag: 'Balance & Wohlbefinden', focus: 'Wohlbefinden, Balance, mentale Gesundheit',
+      persona: 'Du bist SARAH – empathisch und unterstützend. Dein Schwerpunkt: Wohlbefinden, Balance und mentale Gesundheit. Sprich warm, ermutigend und achtsam, nimm Druck heraus und betone Selbstfürsorge und kleine, machbare Schritte.',
+      lines: {
+        start: ['Schön, dass du dir Zeit für dich nimmst. Wir starten ganz in deinem Tempo.', 'Los geht\'s – achtsam und in deinem Rhythmus.'],
+        work: ['{ex}, {target}. Satz {set} von {sets}. Hör auf deinen Körper.', 'Jetzt {ex} – {target}. Satz {set} von {sets}. Du machst das wunderbar.'],
+        rest: ['Atme tief durch. Gleich folgt {next}.', 'Gönn dir die Pause – danach kommt {next}.'],
+        half: ['Du machst das wunderbar – bleib bei dir.', 'Halbzeit. Spür, wie gut dir das tut.'],
+        count3: ['Noch drei Sekunden – du schaffst das.', 'Gleich geschafft, bleib ruhig.'],
+        finish: ['Wundervoll! Sei stolz auf dich – das war Selbstfürsorge pur.', 'Geschafft! Nimm dieses gute Gefühl mit in den Tag.']
+      } },
+    { id: 'lisa', name: 'Lisa', emoji: '🔥', grad: 'sunrise', gender: 'w', voiceTts: 'Aoede', tag: 'Kraft & Transformation', focus: 'Kraft, Fitness, Transformation',
+      persona: 'Du bist LISA – energetisch und leistungsorientiert. Dein Schwerpunkt: Kraft, Fitness und Transformation. Sprich mitreißend und zielstrebig, feiere Fortschritte, setze klare Ziele und fordere den Nutzer freundlich heraus.',
+      lines: {
+        start: ['Zeit für deine Transformation – los geht\'s!', 'Heute wieder ein Stück stärker werden – start!'],
+        work: ['{ex}! {target}. Satz {set} von {sets}. Zeig, was in dir steckt!', '{ex}, {target}. Satz {set} von {sets}. Power!'],
+        rest: ['Kurz laden – gleich: {next}!', 'Durchatmen, dann {next}. Du bist auf Kurs!'],
+        half: ['Du bist stärker, als du denkst!', 'Halbzeit – jetzt kommt deine starke Hälfte!'],
+        count3: ['Drei Sekunden – finish strong!', 'Noch drei – alles rauslassen!'],
+        finish: ['JA! Das war stark – wieder ein Schritt zur besten Version von dir!', 'Geschafft! Genau so sieht Fortschritt aus!']
+      } },
+    { id: 'emma', name: 'Emma', emoji: '🌿', grad: 'sage', gender: 'w', voiceTts: 'Kore', tag: 'Vitalität & Prävention', focus: 'Prävention, Vitalität, langfristige Gesundheit',
+      persona: 'Du bist EMMA – ruhig und gesundheitsorientiert. Dein Schwerpunkt: Prävention, Vitalität und langfristige Gesundheit. Sprich besonnen und fürsorglich, denke langfristig und betone Prävention, Schlaf, Stressabbau und nachhaltige Gewohnheiten.',
+      lines: {
+        start: ['Schön, dass du dranbleibst – jede Einheit zahlt auf deine Gesundheit ein.', 'Wir beginnen ruhig und konzentriert.'],
+        work: ['{ex}. {target}. Satz {set} von {sets}. Atme gleichmäßig.', '{ex}, {target}. Satz {set} von {sets}. Ruhig und kontrolliert.'],
+        rest: ['Pause. Lass die Schultern locker – gleich folgt {next}.', 'Erhol dich kurz. Danach: {next}.'],
+        half: ['Schön gleichmäßig weiteratmen.', 'Halbzeit – ganz in deinem Tempo.'],
+        count3: ['Noch drei Sekunden.', 'Gleich geschafft – ruhig ausatmen.'],
+        finish: ['Sehr gut. Diese Routine stärkt deine Gesundheit langfristig.', 'Geschafft – dein Körper dankt es dir.']
+      } }
   ],
 
   kiSystemPrompt: `Du bist der persönliche KI-Coach für Gesundheit, Ernährung, Fitness und Motivation dieser App. Du arbeitest wie ein Personal Trainer, Ernährungsberater und Lifestyle-Coach in einer Person und begleitest den Nutzer langfristig.

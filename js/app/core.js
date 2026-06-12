@@ -62,6 +62,71 @@ const state = {
   weight: load(STORE.weight, []), water: load(STORE.water, {})
 };
 const coachAvatarById = id => (D.coachAvatars || []).find(a => a.id === id) || null;
+
+// ===== Natürliche Coach-Stimme (Gemini-TTS über den KI-Worker) =====
+// Audio-Cache pro Sitzung: "voice|text" → Objekt-URL. Bei Fehlern/Timeout
+// fällt der Aufrufer auf die Geräte-Stimme (Web Speech) zurück.
+const ttsCache = new Map();
+let ttsAudio = null; // ein wiederverwendetes Element – per Nutzer-Klick freigeschaltet (iOS)
+function ttsUnlock() {
+  try {
+    if (!ttsAudio) ttsAudio = new Audio();
+    // 1 Sample Stille: schaltet spätere programmatische Wiedergabe frei
+    ttsAudio.src = 'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQIAAAAAAA==';
+    ttsAudio.play().catch(() => {});
+  } catch {}
+}
+// Gemini liefert rohes PCM (16 Bit mono) – für <audio> in einen WAV-Container packen.
+function pcmToWavUrl(b64, rate) {
+  const bin = atob(b64), n = bin.length;
+  const buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true);
+  v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  w(36, 'data'); v.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, bin.charCodeAt(i));
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+const ttsKey = (text, voice) => voice + '|' + text;
+const ttsCached = (text, voice) => ttsCache.has(ttsKey(text, voice));
+async function ttsFetch(text, voice) {
+  const key = ttsKey(text, voice);
+  if (ttsCache.has(key)) return ttsCache.get(key);
+  if (!D.kiEndpoint) return null;
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), 9000);
+  try {
+    const r = await fetch(D.kiEndpoint, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tts: true, text, voice }), signal: ctrl.signal
+    });
+    const j = await r.json();
+    if (!r.ok || !j.audio) return null;
+    const rate = Number((/rate=(\d+)/.exec(j.mime || '') || [])[1]) || 24000;
+    const url = pcmToWavUrl(j.audio, rate);
+    ttsCache.set(key, url);
+    return url;
+  } catch { return null; } finally { clearTimeout(to); }
+}
+// true = natürlich gesprochen; false = Aufrufer nutzt Web-Speech-Fallback.
+async function naturalSpeak(text, voice, hooks) {
+  const url = await ttsFetch(text, voice);
+  if (!url) return false;
+  try {
+    if (!ttsAudio) ttsAudio = new Audio();
+    ttsAudio.pause();
+    ttsAudio.onplay = (hooks && hooks.onstart) || null;
+    ttsAudio.onended = ttsAudio.onerror = (hooks && hooks.onend) || null;
+    ttsAudio.src = url;
+    await ttsAudio.play();
+    return true;
+  } catch { return false; }
+}
+function stopNatural() {
+  try { if (ttsAudio) { ttsAudio.onplay = ttsAudio.onended = ttsAudio.onerror = null; ttsAudio.pause(); } } catch {}
+}
+
 let recog = null;
 let scanStream = null, scanReader = null, scanLoop = null, scanControls = null, scanTimeout = null;
 if (!state.shop.extras) state.shop.extras = [];
