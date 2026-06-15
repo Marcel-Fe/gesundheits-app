@@ -23,7 +23,7 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
 
-  <link rel="stylesheet" href="css/styles.css?v=32" />
+  <link rel="stylesheet" href="css/styles.css?v=33" />
 </head>
 <body>
 
@@ -58,29 +58,45 @@
   <div id="drawer-scrim" class="drawer-scrim" hidden></div>
   <aside id="drawer" class="drawer" aria-hidden="true"></aside>
 
-  <script src="js/data.js?v=32"></script>
-  <script src="js/content/foods.js?v=32"></script>
-  <script src="js/content/recipes.js?v=32"></script>
-  <script src="js/content/exercises.js?v=32"></script>
-  <script src="js/content/sessions.js?v=32"></script>
-  <script src="js/content.js?v=32"></script>
-  <script src="js/knowledge.js?v=32"></script>
-  <script src="js/logic.js?v=32"></script>
-  <script src="js/app/core.js?v=32"></script>
-  <script src="js/app/screens-start.js?v=32"></script>
-  <script src="js/app/ernaehrung.js?v=32"></script>
-  <script src="js/app/wissen.js?v=32"></script>
-  <script src="js/app/training.js?v=32"></script>
-  <script src="js/app/tracker.js?v=32"></script>
-  <script src="js/app/coach.js?v=32"></script>
-  <script src="js/app/play3d.js?v=32"></script>
-  <script src="js/app/main.js?v=32"></script>
+  <script src="js/data.js?v=33"></script>
+  <script src="js/content/foods.js?v=33"></script>
+  <script src="js/content/recipes.js?v=33"></script>
+  <script src="js/content/exercises.js?v=33"></script>
+  <script src="js/content/sessions.js?v=33"></script>
+  <script src="js/content.js?v=33"></script>
+  <script src="js/knowledge.js?v=33"></script>
+  <script src="js/logic.js?v=33"></script>
+  <script src="js/app/core.js?v=33"></script>
+  <script src="js/app/screens-start.js?v=33"></script>
+  <script src="js/app/ernaehrung.js?v=33"></script>
+  <script src="js/app/wissen.js?v=33"></script>
+  <script src="js/app/training.js?v=33"></script>
+  <script src="js/app/tracker.js?v=33"></script>
+  <script src="js/app/coach.js?v=33"></script>
+  <script src="js/app/play3d.js?v=33"></script>
+  <script src="js/app/main.js?v=33"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW-Registrierung fehlgeschlagen:', err));
       });
     }
+    // Selbstheilung: Startet die App nach 6 s nicht (Splash klemmt durch alten/kaputten
+    // Cache), einmalig Cache leeren + Service-Worker abmelden + neu laden. sessionStorage
+    // verhindert eine Endlosschleife.
+    setTimeout(function () {
+      var appEl = document.getElementById('app');
+      var booted = appEl && appEl.children.length > 0;
+      if (booted || sessionStorage.getItem('sw-healed')) return;
+      sessionStorage.setItem('sw-healed', '1');
+      var done = function () { location.reload(); };
+      var p = (window.caches ? caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }) : Promise.resolve());
+      if (navigator.serviceWorker) {
+        p = p.then(function () { return navigator.serviceWorker.getRegistrations(); })
+             .then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); });
+      }
+      p.then(done, done);
+    }, 6000);
   </script>
 </body>
 </html>
