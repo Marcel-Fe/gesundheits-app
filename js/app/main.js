@@ -81,6 +81,23 @@ function openFood(id) { state.foodId = id; state.route = 'food'; render(); }
 
 function bindView() {
   loadWeather();
+  // Coach-Begrüßung: Stimmung wählen → Workout anpassen + persönlichen Dialog starten
+  const ct = document.getElementById('coach-talk');
+  if (ct) ct.onclick = () => { ttsUnlock(); state.route = 'ki'; render(); };
+  app.querySelectorAll('[data-mood]').forEach(el => el.onclick = () => {
+    const mood = el.dataset.mood;
+    state.mood[todayKey()] = mood; save(STORE.mood, state.mood);
+    state.energy = mood === 'tired' ? 'low' : mood === 'super' ? 'high' : 'normal';
+    state.workout = null; // Workout an die Tagesform anpassen
+    ttsUnlock();
+    state.route = 'ki'; render();
+    const msg = {
+      super: 'Mir geht es heute super und ich bin voller Energie! Wie nutze ich den Schwung heute am besten?',
+      okay: 'Mir geht es heute ganz okay. Was empfiehlst du mir für heute?',
+      tired: 'Ich bin heute ziemlich müde und schlapp. Was kann ich heute trotzdem Gutes für mich tun?'
+    }[mood];
+    if (D.kiEndpoint && msg && !state.chatBusy) sendToKI(msg);
+  });
   const mb = document.getElementById('menu-btn');
   if (mb) mb.onclick = openDrawer;
   app.querySelectorAll('[data-recipe]').forEach(el => el.onclick = () => openRecipe(el.dataset.recipe));

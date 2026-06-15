@@ -6,7 +6,7 @@ const D = window.GDATA;
 const C = window.GCONTENT;
 const L = window.GLOGIC;
 const K = window.GKNOW;
-const STORE = { profile: 'gapp.profile', chat: 'gapp.chat', plan: 'gapp.plan', shop: 'gapp.shop', workout: 'gapp.workout', intake: 'gapp.intake', calGoal: 'gapp.calgoal', weight: 'gapp.weight', water: 'gapp.water' };
+const STORE = { profile: 'gapp.profile', chat: 'gapp.chat', plan: 'gapp.plan', shop: 'gapp.shop', workout: 'gapp.workout', intake: 'gapp.intake', calGoal: 'gapp.calgoal', weight: 'gapp.weight', water: 'gapp.water', mood: 'gapp.mood' };
 const WATER_GOAL = 8; // Gläser à 250 ml = 2 L Tagesziel
 
 const load = (key, fb) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fb; } catch { return fb; } };
@@ -59,8 +59,11 @@ const state = {
   intake: load(STORE.intake, {}), calGoal: load(STORE.calGoal, null), foodQuery: '',
   voiceOut: load('gapp.voice', false), listening: false,
   coachAvatar: load('gapp.coachAvatar', null), coachConsent: load('gapp.coachConsent', false),
-  weight: load(STORE.weight, []), water: load(STORE.water, {})
+  weight: load(STORE.weight, []), water: load(STORE.water, {}),
+  mood: load(STORE.mood, {})
 };
+// Heutige Stimmung färbt das Workout (müde → leichter, fit → fordernder).
+{ const m = state.mood[todayKey()]; if (m) state.energy = m === 'tired' ? 'low' : m === 'super' ? 'high' : 'normal'; }
 const coachAvatarById = id => (D.coachAvatars || []).find(a => a.id === id) || null;
 
 // ===== Natürliche Coach-Stimme (Gemini-TTS über den KI-Worker) =====

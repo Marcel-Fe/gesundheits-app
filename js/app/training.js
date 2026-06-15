@@ -17,7 +17,12 @@ function renderSession() {
     <div class="recipe-hero g-${s.grad}">${s.emoji}</div>
     <h1 class="page-title">${esc(s.name)}</h1>
     <p class="page-sub">⏱️ ${s.minutes} Min · ${esc(LEVEL_LABEL[s.level] || '')} · ${s.items.length} Übungen</p>
-    <p class="muted" style="margin:8px 0 16px">${esc(s.blurb)}</p>
+    <p class="muted" style="margin:8px 0 12px">${esc(s.blurb)}</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+      <span class="pill" style="background:var(--surface-2);color:var(--text-2)">🔥 Aufwärmen</span>
+      <span class="pill" style="background:var(--surface-2);color:var(--text-2)">💪 ${s.items.length} Übungen</span>
+      <span class="pill" style="background:var(--surface-2);color:var(--text-2)">🧘 Abkühlen</span>
+    </div>
     <button class="btn btn-green" id="ses-play" style="margin:4px 0 16px;font-size:17px;padding:16px">▶️ Geführt mitmachen</button>
     <div class="section-title" style="margin-top:0">Übungen</div>
     ${items}
@@ -35,22 +40,30 @@ function renderSession() {
 }
 
 // ===== Mitmach-Workout-Player (geführt, mit Timer & Sprachansage) =====
+// Struktur wie ein echtes Training: Aufwärmen → Hauptteil → Abkühlen.
 let playTimer = null;
+const WARMUP_IDS = ['hip_circles', 'jumping_jacks', 'toe_touches'];
+const COOLDOWN_IDS = ['chest_stretch', 'toe_touches'];
+function framePhase(ids, phase, dur, label, count) {
+  return ids.map(id => L.exerciseById(C, id)).filter(Boolean).slice(0, count)
+    .map(ex => ({ kind: 'work', phase, ex, set: 1, sets: 1, isHold: false, reps: null, hold: null, dur, targetText: label }));
+}
 function buildPlaySteps(s) {
-  const steps = [];
+  const steps = framePhase(WARMUP_IDS, 'warmup', 25, '25 Sekunden locker', 2);
   s.items.forEach((it, ii) => {
     const ex = L.exerciseById(C, it.exerciseId);
     const sets = it.sets || 1;
     for (let set = 1; set <= sets; set++) {
       const isHold = !!it.hold;
       const dur = isHold ? it.hold : Math.min(60, Math.max(20, Math.round((it.reps || 10) * 2.5)));
-      steps.push({ kind: 'work', ex, set, sets, isHold, reps: it.reps, hold: it.hold, dur, itemNum: ii + 1 });
+      steps.push({ kind: 'work', phase: 'main', ex, set, sets, isHold, reps: it.reps, hold: it.hold, dur, itemNum: ii + 1 });
       const last = ii === s.items.length - 1 && set === sets;
-      if (!last) steps.push({ kind: 'rest', dur: 20, ex, itemNum: ii + 1 });
+      if (!last) steps.push({ kind: 'rest', phase: 'main', dur: 20, ex, itemNum: ii + 1 });
     }
   });
+  steps.push(...framePhase(COOLDOWN_IDS, 'cooldown', 25, '25 Sekunden ruhig dehnen', 2));
   for (let i = 0; i < steps.length; i++) {
-    if (steps[i].kind === 'rest') { const n = steps[i + 1]; steps[i].nextEx = n ? n.ex : null; steps[i].nextSet = n ? n.set : null; if (n) steps[i].itemNum = n.itemNum; }
+    if (steps[i].kind === 'rest') { const n = steps[i + 1]; steps[i].nextEx = n ? n.ex : null; steps[i].nextSet = n ? n.set : null; if (n && n.itemNum) steps[i].itemNum = n.itemNum; }
   }
   return steps;
 }
@@ -129,13 +142,21 @@ function startPlay(sessionId) {
   state.playSession = sessionId;
   state.playSteps = buildPlaySteps(s);
   // Ansagen jetzt festlegen (Zufallsvariante je Schritt) → vorab ladbar
+  let firstMain = true, firstCool = true;
   state.playSteps.forEach((st, i) => {
-    if (st.kind === 'work') {
-      const target = st.isHold ? `${st.hold} Sekunden halten` : `${st.reps} Wiederholungen`;
-      const intro = i === 0 ? coachLine('start') + ' ' : '';
-      st.line = intro + coachLine('work', { ex: st.ex.name, target, set: st.set, sets: st.sets });
-    } else {
+    const intro = i === 0 ? coachLine('start') + ' ' : '';
+    if (st.kind === 'rest') {
       st.line = coachLine('rest', { next: st.nextEx ? st.nextEx.name : 'fertig' });
+    } else if (st.phase === 'warmup') {
+      st.line = intro + `Aufwärmen: ${st.ex.name}, ${st.targetText}.`;
+    } else if (st.phase === 'cooldown') {
+      st.line = (firstCool ? 'Geschafft! Zum Abschluss locker machen. ' : '') + `${st.ex.name}, ${st.targetText}.`;
+      firstCool = false;
+    } else {
+      const target = st.isHold ? `${st.hold} Sekunden halten` : `${st.reps} Wiederholungen`;
+      st.line = intro + (firstMain ? 'Aufwärmen fertig – jetzt geht\'s richtig los! ' : '') +
+        coachLine('work', { ex: st.ex.name, target, set: st.set, sets: st.sets });
+      firstMain = false;
     }
   });
   prefetchPlayLines();
@@ -218,15 +239,16 @@ function renderPlay() {
   const media = (ex && ex.anim)
     ? `<div class="play-media ex-anim"><span class="anim-emoji g-${ex.grad}">${ex.emoji}</span><img class="anim-fr" src="${esc(ex.anim.a)}" alt="" onerror="this.style.display='none'"><img class="anim-fr b" src="${esc(ex.anim.b)}" alt="" onerror="this.style.display='none'"></div>`
     : `<div class="play-media play-emoji g-${ex ? ex.grad : 'sage'}">${ex ? ex.emoji : '🏁'}</div>`;
-  const target = isRest ? '' : (st.isHold ? `${st.hold} Sekunden halten` : `${st.reps} Wiederholungen`);
+  const target = isRest ? '' : (st.targetText || (st.isHold ? `${st.hold} Sekunden halten` : `${st.reps} Wiederholungen`));
+  const phaseLabel = st.phase === 'warmup' ? '🔥 Aufwärmen' : st.phase === 'cooldown' ? '🧘 Abkühlen' : null;
   app.innerHTML = `<div class="screen play-screen ${isRest ? 'rest' : 'work'}">
     <div class="play-top">
       <button class="play-x" id="play-quit" aria-label="Beenden">✕</button>
-      <div class="play-progress-text">Übung ${st.itemNum}/${totalItems}</div>
+      <div class="play-progress-text">${st.itemNum ? `Übung ${st.itemNum}/${totalItems}` : (st.phase === 'warmup' ? 'Aufwärmen' : 'Abkühlen')}</div>
       <button class="play-x" id="play-sound" aria-label="Ton">${state.playVoice ? '🔊' : '🔇'}</button>
     </div>
     <div class="play-bar"><span style="width:${overallPct}%"></span></div>
-    <div class="play-label">${isRest ? '⏸️ Pause' : `Satz ${st.set}/${st.sets}`}</div>
+    <div class="play-label">${isRest ? '⏸️ Pause' : (phaseLabel || `Satz ${st.set}/${st.sets}`)}</div>
     ${media}
     <h1 class="play-name">${isRest ? 'Als Nächstes' : esc(ex.name)}</h1>
     <p class="play-target">${isRest ? (st.nextEx ? esc(st.nextEx.name) : 'Gleich fertig') : target}</p>

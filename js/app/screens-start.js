@@ -108,6 +108,42 @@ function loadWeather() {
   }, () => { el.textContent = weatherFallback(); }, { timeout: 8000, maximumAge: 1800000 });
 }
 
+// Coach-Begrüßung auf der Startseite: fragt nach dem Befinden,
+// die Antwort startet einen persönlichen Dialog im Coach-Chat.
+function coachHello() {
+  const av = coachAvatarById(state.coachAvatar);
+  if (!av) {
+    return `<button class="coach-hello" data-go="ki">
+      <span class="coach-face g-sage">🤖</span>
+      <span class="ch-main"><b>Wähle deinen persönlichen Coach</b>
+        <span class="muted">6 Coaches mit eigenem Stil – für Training, Ernährung & Motivation.</span></span>
+      <span class="row-chev">›</span>
+    </button>`;
+  }
+  const face = `<span class="coach-face g-${av.grad}">${av.emoji}<img src="icons/coach/${av.id}.png" alt="" onerror="this.remove()"></span>`;
+  const mood = state.mood[todayKey()];
+  if (mood) {
+    const lbl = { super: 'voller Energie 💪', okay: 'ganz okay 🙂', tired: 'eher müde 😴' }[mood] || mood;
+    return `<div class="coach-hello">
+      ${face}
+      <span class="ch-main"><b>${esc(av.name)}</b>
+        <span class="muted">Du fühlst dich heute ${lbl} – dein Workout ist darauf abgestimmt.</span>
+        <button class="btn btn-ghost ch-talk" id="coach-talk">💬 Mit ${esc(av.name)} sprechen</button></span>
+    </div>`;
+  }
+  return `<div class="coach-hello">
+    ${face}
+    <span class="ch-main"><b>${esc(av.name)} fragt:</b>
+      <span>Wie geht's dir heute? Wie kann ich dir helfen?</span>
+      <span class="ch-moods">
+        <button class="chip" data-mood="super">😄 Super</button>
+        <button class="chip" data-mood="okay">🙂 Okay</button>
+        <button class="chip" data-mood="tired">😴 Müde</button>
+      </span>
+      <button class="link-btn" id="coach-talk" style="text-align:left">… oder direkt mit ${esc(av.name)} sprechen 💬</button></span>
+  </div>`;
+}
+
 function renderDashboard() {
   const p = state.profile;
   const idx = L.todayIndex(state.plan);
@@ -128,6 +164,8 @@ function renderDashboard() {
       <p class="greet-weather" id="greet-weather">📍 Wetter & Bewegungstipp laden…</p>
       <p class="greet-quote">„${esc(quoteOfHour())}"</p>
     </div>
+
+    <div ${di()}>${coachHello()}</div>
 
     <div class="stats" ${di()}>
       <button class="stat" data-go="fortschritt"><div class="stat-ic">🔥</div><div class="stat-val">${streak}</div><div class="stat-lbl">${streak === 1 ? 'Tag' : 'Tage'}-Serie</div></button>

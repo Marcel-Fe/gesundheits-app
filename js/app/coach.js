@@ -175,7 +175,11 @@ async function sendToKI(text) {
   state.chatBusy = true; save(STORE.chat, state.chat); renderChat();
   try {
     const p = state.profile;
-    const note = p ? `\n\nKontext zum Nutzer: Ziel=${p.goal}, Ernährung=${p.dietType}, Budget=${p.budget}, Zeit/Tag=${p.timePerDay}min, Fitness=${p.fitnessLevel}, Haushalt=${p.householdSize}.` : '';
+    let note = p ? `\n\nKontext zum Nutzer: Ziel=${p.goal}, Ernährung=${p.dietType}, Budget=${p.budget}, Zeit/Tag=${p.timePerDay}min, Fitness=${p.fitnessLevel}, Haushalt=${p.householdSize}.` : '';
+    // Tageswerte mitgeben → der Coach kann sich persönlich darauf beziehen.
+    const kcalToday = todayIntake().reduce((s, it) => s + (it.kcal || 0), 0);
+    const moodToday = state.mood[todayKey()] || 'unbekannt';
+    note += `\nHeute: Stimmung=${moodToday}, gegessen=${kcalToday} kcal${state.calGoal ? ` (Ziel ${state.calGoal})` : ''}, Wasser=${state.water[todayKey()] || 0} Gläser, Workout=${doneToday() ? 'schon erledigt' : 'noch offen'}. Beziehe dich darauf, wenn es zur Frage passt.`;
     const av = coachAvatarById(state.coachAvatar);
     const persona = av ? av.persona + '\n\n' : '';
     const consent = state.coachConsent
