@@ -101,6 +101,13 @@ function bindView() {
   const mb = document.getElementById('menu-btn');
   if (mb) mb.onclick = openDrawer;
   app.querySelectorAll('[data-recipe]').forEach(el => el.onclick = () => openRecipe(el.dataset.recipe));
+  app.querySelectorAll('[data-logrecipe]').forEach(el => el.onclick = () => {
+    const r = recipeById(el.dataset.logrecipe); if (!r) return;
+    const n = L.recipeNutrients(C, r).perServing;
+    const cat = (r.category === 'breakfast' || r.category === 'lunch' || r.category === 'dinner') ? r.category : mealCatByTime();
+    addIntake(r.name, n.kcal, cat, { c: n.carbs, p: n.protein, f: n.fat });
+    render(); // Cockpit (kcal übrig) sofort aktualisieren
+  });
   app.querySelectorAll('[data-ex]').forEach(el => el.onclick = () => openExercise(el.dataset.ex));
   app.querySelectorAll('[data-session]').forEach(el => el.onclick = () => openSession(el.dataset.session));
   app.querySelectorAll('[data-vit]').forEach(el => el.onclick = () => openVitamin(el.dataset.vit));

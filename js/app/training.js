@@ -341,6 +341,12 @@ function renderExercise() {
     ? `<div class="recipe-hero ex-anim"><span class="anim-emoji g-${ex.grad}">${ex.emoji}</span><img class="anim-fr" src="${esc(ex.anim.a)}" alt="${esc(ex.name)}" onerror="this.style.display='none'"><img class="anim-fr b" src="${esc(ex.anim.b)}" alt="" onerror="this.style.display='none'"></div>`
     : `<div class="recipe-hero g-${ex.grad}">${ex.emoji}</div>`;
   const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name + ' richtig ausführen')}`;
+  const av = coachAvatarById(state.coachAvatar);
+  const coachCard = av ? `<div class="card"><div class="coach-bar" style="margin:0">
+      ${coachFace(av, 'coach-face')}
+      <div class="coach-meta"><div class="coach-name">${esc(av.name)} erklärt dir die Übung</div><div class="coach-tag">Tippe auf „Vormachen" – ich sag dir, worauf es ankommt.</div></div>
+    </div>
+    <button class="btn btn-green" id="ex-coach-demo" style="margin-top:12px">▶️ ${esc(av.name)} macht's vor</button></div>` : '';
   app.innerHTML = `<div class="screen">
     <div class="page-head"><button class="btn btn-ghost" id="ex-back" style="width:auto;padding:8px 14px">← Zurück</button></div>
     ${media}
@@ -348,10 +354,38 @@ function renderExercise() {
     <p class="page-sub">${GROUP_LABEL[ex.group] || ''} · ${ex.equipment === 'none' ? 'ohne Geräte' : 'wenig Equipment'}${ex.anim ? ' · 📷 Demo' : ''}</p>
     <div class="card" style="margin-top:12px"><div class="card-title">🎯 Heute</div><p class="muted">${target}</p></div>
     <div class="card"><div class="card-title">📋 So geht's</div><p class="muted">${esc(ex.technique)}</p></div>
+    ${coachCard}
     ${next ? `<p class="muted" style="text-align:center">Wird's zu leicht? Nächste Stufe: <b>${esc(next.name)}</b></p>` : ''}
     <a class="btn btn-ghost" href="${ytUrl}" target="_blank" rel="noopener" style="margin-top:8px">▶️ Video-Tutorial auf YouTube</a>
   </div>`;
-  document.getElementById('ex-back').onclick = () => { state.route = 'training'; render(); };
+  document.getElementById('ex-back').onclick = () => { if (ttsOk) { try { speechSynthesis.cancel(); } catch {} } stopNatural(); state.route = 'training'; render(); };
+  const demo = document.getElementById('ex-coach-demo');
+  if (demo) demo.onclick = () => {
+    ttsUnlock();
+    const intro = coachLine('start');
+    const text = `${intro} ${ex.name}: ${ex.technique} ${target}.`;
+    coachSpeakEx(text);
+  };
+}
+// Coach erklärt eine Übung mit Stimme + pulsierendem Porträt (eigene Stelle außerhalb des Players).
+function coachSpeakEx(text) {
+  const face = () => document.querySelector('#ex-coach-demo')?.closest('.card')?.querySelector('.coach-face');
+  const hooks = {
+    onstart: () => { const f = face(); if (f) f.classList.add('face-talking'); },
+    onend: () => { const f = face(); if (f) f.classList.remove('face-talking'); }
+  };
+  if (ttsOk) { try { speechSynthesis.cancel(); } catch {} }
+  stopNatural();
+  const av = coachAvatarById(state.coachAvatar);
+  naturalSpeak(text, (av && av.voiceTts) || 'Kore', hooks).then(ok => {
+    if (ok || !ttsOk) return;
+    try {
+      const u = new SpeechSynthesisUtterance(text); u.lang = 'de-DE'; u.rate = 1.0;
+      const v = pickVoice(av ? av.gender : 'm'); if (v) u.voice = v;
+      u.onstart = hooks.onstart; u.onend = hooks.onend; u.onerror = hooks.onend;
+      speechSynthesis.speak(u);
+    } catch {}
+  });
 }
 
 // ===== Linkes Menü (Drawer) =====

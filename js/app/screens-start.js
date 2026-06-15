@@ -194,13 +194,16 @@ function renderDashboard() {
       <div class="section-title">Heute essen</div>
       <div class="h-scroll">
         ${meals.map(x => `
-          <button class="meal-card" data-recipe="${x.r.id}">
-            ${thumb('meal-thumb', x.r.grad, x.r.emoji, x.r.id, SLOT[x.m.slot])}
-            <div class="meal-body">
-              <div class="meal-name">${esc(x.r.name)}</div>
-              <div class="meal-kcal">${Math.round(x.n.kcal)} kcal · ${Math.round(x.n.protein)} g Eiweiß</div>
-            </div>
-          </button>`).join('')}
+          <div class="meal-card-wrap">
+            <button class="meal-card" data-recipe="${x.r.id}">
+              ${thumb('meal-thumb', x.r.grad, x.r.emoji, x.r.id, SLOT[x.m.slot])}
+              <div class="meal-body">
+                <div class="meal-name">${esc(x.r.name)}</div>
+                <div class="meal-kcal">${Math.round(x.n.kcal)} kcal · ${Math.round(x.n.protein)} g Eiweiß</div>
+              </div>
+            </button>
+            <button class="meal-log" data-logrecipe="${x.r.id}" aria-label="${esc(x.r.name)} als gegessen eintragen">🍽️ Gegessen</button>
+          </div>`).join('')}
       </div>
     </div>
 
