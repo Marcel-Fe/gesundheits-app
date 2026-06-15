@@ -62,9 +62,12 @@ function greeting() {
 
 function ensureWorkout() {
   const todayMs = new Date().setHours(0, 0, 0, 0);
-  if (!state.workout || state.workout.date !== todayMs || state.workout.energy !== state.energy || state.workout._v !== state.woVariation) {
-    state.workout = L.generateWorkout(C, state.profile, state.energy, state.workoutStore, state.woVariation);
+  const av = coachAvatarById(state.coachAvatar);
+  const coachId = av ? av.id : '';
+  if (!state.workout || state.workout.date !== todayMs || state.workout.energy !== state.energy || state.workout._v !== state.woVariation || state.workout._coach !== coachId) {
+    state.workout = L.generateWorkout(C, state.profile, state.energy, state.workoutStore, state.woVariation, av && av.train);
     state.workout._v = state.woVariation;
+    state.workout._coach = coachId;
   }
   return state.workout;
 }

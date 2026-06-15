@@ -296,9 +296,16 @@ function renderTraining() {
         <div class="row-sub">${target} · ${GROUP_LABEL[it.group] || ''}</div></div>
       <div class="row-chev">›</div></button>`;
   }).join('');
+  const av = coachAvatarById(state.coachAvatar);
+  const coachBanner = av && av.train ? `<div class="coach-hello" style="margin-bottom:16px">
+      <span class="coach-face g-${av.grad}">${av.emoji}<img src="icons/coach/${av.id}.png" alt="" onerror="this.remove()"></span>
+      <span class="ch-main"><b>${esc(av.name)} stellt dir dein Workout zusammen</b>
+        <span class="muted">Stil: ${esc(av.train.style)} · ${esc(av.name)} macht mit und sagt dir alles an.</span></span>
+    </div>` : '';
   return `
     <div class="page-head"><h1 class="page-title">Training</h1>
       <p class="page-sub">${esc(labelFor('fitnessLevel', p.fitnessLevel))} · ${total} Workouts geschafft</p></div>
+    ${coachBanner}
     <div class="section-title" style="margin-top:0">Wie fühlst du dich?</div>
     <div class="chips">${chips.map(([v, l]) => `<button class="chip ${state.energy === v ? 'sel' : ''}" data-energy="${v}">${l}</button>`).join('')}</div>
     <div class="section-title">Dein Workout heute</div>

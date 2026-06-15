@@ -167,7 +167,9 @@
     };
   }
 
-  function generateWorkout(content, profile, energy, store, variation) {
+  // coach: optionales Trainingsprofil { focus, intensity, mobility } → formt das
+  // Workout im Stil des gewählten Coaches (Schwerpunkt-Gruppe, Intensität, Mobilität).
+  function generateWorkout(content, profile, energy, store, variation, coach) {
     store = store || { progress: {}, history: [] };
     const v = variation || 0;
     const userRank = LEVEL[profile.fitnessLevel] || 1;
@@ -177,20 +179,25 @@
 
     const n = workoutSize(profile.timePerDay);
     const cardioFirst = ['lose', 'health', 'family'].includes(profile.goal);
-    const order = cardioFirst ? ['legs', 'push', 'core', 'cardio', 'back'] : ['legs', 'push', 'core', 'back', 'cardio'];
+    let order = cardioFirst ? ['legs', 'push', 'core', 'cardio', 'back'] : ['legs', 'push', 'core', 'back', 'cardio'];
+    // Coach-Schwerpunkt zuerst und doppelt gewichten (mehr Übungen dieser Gruppe).
+    if (coach && coach.focus) order = [coach.focus, coach.focus, ...order.filter(g => g !== coach.focus)];
 
     const chosen = [], used = {};
     const take = g => { const list = byGroup(g); if (!list.length) return; const i = used[g] != null ? used[g] : v; const ex = list[i % list.length]; used[g] = i + 1; if (!chosen.find(c => c.id === ex.id)) chosen.push(ex); };
+    // Coaches mit Mobilitäts-Fokus starten mit einer ruhigen Rücken-/Rumpf-Übung.
+    if (coach && coach.mobility) { take('back'); take('core'); }
     for (const g of order) { if (chosen.length >= n) break; take(g); }
     const groups = ['legs', 'push', 'core', 'cardio', 'back'];
     let gi = 0, guard = 0;
     while (chosen.length < n && guard < 100) { take(groups[gi++ % groups.length]); guard++; }
 
-    const setBonus = profile.goal === 'muscle' ? 1 : 0;
+    const coachIntensity = coach && coach.intensity ? coach.intensity : 0;
+    const setBonus = (profile.goal === 'muscle' ? 1 : 0) + coachIntensity;
     const energyDelta = energy === 'low' ? -1 : 0;
     const items = chosen.slice(0, n).map(ex => {
       const t = exerciseTarget(store, ex);
-      return { exerciseId: ex.id, name: ex.name, emoji: ex.emoji, grad: ex.grad, group: ex.group, type: ex.type, sets: Math.max(1, t.sets + setBonus + energyDelta), reps: t.reps, hold: t.hold };
+      return { exerciseId: ex.id, name: ex.name, emoji: ex.emoji, grad: ex.grad, group: ex.group, type: ex.type, sets: Math.max(1, Math.min(5, t.sets + setBonus + energyDelta)), reps: t.reps, hold: t.hold };
     });
     return { date: startOfToday(), energy: energy || 'normal', items };
   }

@@ -71,12 +71,19 @@ function renderRecipe() {
     <div class="section-title">Zubereitung</div>
     <div class="card"><ol class="steps-ol">${r.steps.map(st => `<li>${esc(st)}</li>`).join('')}</ol></div>
 
-    <button class="btn btn-green" id="rec-add" style="margin-top:8px">🛒 Zur Einkaufsliste hinzufügen</button>
+    <button class="btn btn-green" id="rec-eat" style="margin-top:8px">🍽️ Gegessen — zu heute</button>
+    <button class="btn btn-ghost" id="rec-add" style="margin-top:8px">🛒 Zur Einkaufsliste hinzufügen</button>
   </div>`;
 
   document.getElementById('rec-back').onclick = () => { state.route = state.recipeBack; render(); };
   document.getElementById('por-minus').onclick = () => { if (state.portions > 1) { state.portions--; renderRecipe(); } };
   document.getElementById('por-plus').onclick = () => { if (state.portions < 12) { state.portions++; renderRecipe(); } };
+  document.getElementById('rec-eat').onclick = () => {
+    // Eine Portion zählt als eine Mahlzeit; Slot aus dem Rezept (sonst Tageszeit).
+    const cat = (r.category === 'breakfast' || r.category === 'lunch' || r.category === 'dinner') ? r.category : mealCatByTime();
+    addIntake(r.name, n.kcal, cat, { c: n.carbs, p: n.protein, f: n.fat });
+    state.route = 'tracker'; render();
+  };
   document.getElementById('rec-add').onclick = () => {
     state.shop.sources.push({ recipeId: r.id, servings: state.portions });
     save(STORE.shop, state.shop);
