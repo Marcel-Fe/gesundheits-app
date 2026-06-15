@@ -20,9 +20,18 @@ ZXing-Scanner. three.js ist NICHT global in index.html eingebunden.
   `play3dActive()`, `play3dAttach(container)`, `play3dDispose()`.
 - Daten: pro Coach optionales Feld `model` (GLB, Konvention `models/coach/<id>.glb`,
   Ready-Player-Me); Mapping Übung→Animation `EX_ANIM_3D` in `exercises.js`
-  (Datei `models/anim/<name>.glb`, Mixamo).
-- `play3dPlay(spec)` akzeptiert einen eingebetteten Clip-Namen ODER eine `.glb`-URL;
-  schlägt das externe Laden fehl, fällt es auf einen eingebetteten Clip zurück.
+  (Datei `models/anim/<name>.fbx`, Mixamo **direkt** – keine Konvertierung, da auf
+  dem System kein Blender/FBX2glTF verfügbar ist und FBX so reibungslos bleibt).
+- `play3dPlay(spec)` akzeptiert einen eingebetteten Clip-Namen ODER eine `.fbx`/`.glb`-URL
+  (FBXLoader/GLTFLoader, beide lazy); schlägt das Laden fehl, fällt es auf einen
+  eingebetteten Clip zurück.
+- Retargeting zur Laufzeit (`retargetClip`): Mixamo-Clips werden auf das Avatar-Skelett
+  gemappt (Knochennamen tolerant, mit/ohne `mixamorig`-Präfix). Übernommen werden nur
+  Rotations-Tracks (glitchfrei – keine cm-Translationen, die die Figur wegfliegen lassen).
+- Darstellung „wie gekauft": ACES-Tonemapping, sRGB, weiches Hemisphere+Key+Fill-Licht,
+  echter Kontaktschatten am Boden (ShadowMaterial), ruhiger Kamerawinkel, weiche
+  Clip-Übergänge (crossFade). Verifiziert: Mixamo-FBX bewegt einen separaten GLB-Avatar
+  sichtbar, sauberes Dispose, keine Konsolenfehler.
 - Der Player baut sein HTML pro Schritt neu auf: der Renderer wird **einmal**
   gemountet und danach nur umgehängt (`play3dAttach`) + der Clip gewechselt — kein
   Remount, kein Flackern, ein einziger WebGL-Kontext.
@@ -40,9 +49,11 @@ ZXing-Scanner. three.js ist NICHT global in index.html eingebunden.
 - Schwerer / zu beachten:
   - Echte Avatare (RPM) + Animationen (Mixamo) erfordern einmaligen Login/Export
     durch den Nutzer — nicht automatisierbar. Siehe `models/README.md`.
-  - Riskanteste Annahme: Die Knochennamen der Mixamo-Clips müssen zum RPM-Skelett
-    passen, sonst spielt der Clip, aber die Figur bewegt sich nicht (kein Crash).
-    Beim Konvertieren das Mixamo-Naming beibehalten.
+  - Knochen-Mapping wird von `retargetClip` tolerant gelöst (mit/ohne `mixamorig`)
+    und ist im Browser verifiziert. Offene Feinpolitur je Avatar: Bei Übungen mit
+    starker Vertikalbewegung (z. B. Kniebeuge) senkt sich das Becken aktuell nicht im
+    Raum (nur Rotationen) – bewusst, um Wegfliegen durch Skalen-Unterschiede zu
+    vermeiden; bei echten Assets ggf. skalierte Hüft-Translation nachrüsten.
   - three.js & das Test-GLB kommen von fremder Origin (esm.sh/jsDelivr) und werden
     nicht vom Service Worker gecacht — der erste 3D-Start braucht Netz; danach greift
     der HTTP-Cache des Browsers. Foto-Fallback deckt den Offline-Erstfall ab.

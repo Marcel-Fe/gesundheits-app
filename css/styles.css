@@ -416,6 +416,8 @@ button.stat { font: inherit; cursor: pointer; width: 100%; }
 .play-bar > span { display: block; height: 100%; background: var(--grad-sage); transition: width .3s; }
 .play-label { font-weight: 800; color: var(--green); letter-spacing: .5px; text-transform: uppercase; font-size: 13px; margin-bottom: 12px; }
 .play-media { width: 100%; max-width: 360px; aspect-ratio: 4 / 3; border-radius: var(--r-lg); object-fit: cover; box-shadow: var(--shadow-sm); background: var(--surface-2); }
+/* 3D-Bühne: weicher Studio-Verlauf hinter dem Coach-Avatar */
+#play3d { overflow: hidden; background: radial-gradient(120% 100% at 50% 18%, #fbfcfe 0%, #eef1f6 55%, #e2e7f0 100%); }
 .play-emoji { display: flex; align-items: center; justify-content: center; font-size: 96px; }
 .play-name { font-size: 26px; font-weight: 800; margin: 16px 0 4px; }
 .play-target { color: var(--text-2); font-weight: 600; font-size: 16px; margin: 0; }

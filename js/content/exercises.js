@@ -111,8 +111,8 @@
   };
   exercises.forEach(e => { const f = EX_PHOTO[e.id]; if (f) e.anim = { a: `${EX_BASE}${f}/0.jpg`, b: `${EX_BASE}${f}/1.jpg` }; });
 
-  // Übung → 3D-Animationsname (Datei: models/anim/<name>.glb). Der Coach macht die
-  // Bewegung im Player als 3D-Figur vor; fehlt das GLB, greift die Foto-Demo oben.
+  // Übung → 3D-Animationsname (Datei: models/anim/<name>.fbx, Mixamo). Der Coach macht
+  // die Bewegung im Player als 3D-Figur vor; fehlt die Datei, greift die Foto-Demo oben.
   // Varianten teilen sich die passende Grundbewegung (analog EX_PHOTO).
   const EX_ANIM_3D = {
     pushups: 'pushup', knee_pushups: 'pushup', diamond_pushups: 'pushup', pike_pushups: 'pushup',

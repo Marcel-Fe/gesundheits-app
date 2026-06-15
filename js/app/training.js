@@ -221,7 +221,7 @@ function playCoachStrip() {
 // ===== 3D-Coach: Übung als animierte Figur vormachen (Fallback: Foto-Demo) =====
 function anim3dSpec(ex) {
   const name = ex && window.EX_ANIM_3D ? window.EX_ANIM_3D[ex.id] : null;
-  return name ? `models/anim/${name}.glb` : null;
+  return name ? `models/anim/${name}.fbx` : null; // Mixamo-FBX direkt (keine Konvertierung)
 }
 function canPlay3d(ex) {
   const coach = coachAvatarById(state.coachAvatar);
