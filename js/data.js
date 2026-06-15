@@ -80,6 +80,9 @@ window.GDATA = {
 
   // 6 wählbare Coach-Avatare. `persona` wird dem System-Prompt vorangestellt.
   // `lines`: Workout-Ansagen im Charakter (Platzhalter: {ex} {target} {set} {sets} {next}).
+  // `model` (optional): GLB-Avatar fürs 3D-Vormachen im Player. Konvention:
+  //   'models/coach/<id>.glb' (Ready-Player-Me). Fehlt es (null), zeigt der Player
+  //   die Foto-Demo. Siehe models/README.md + decisions/002-3d-coach-player.md.
   coachAvatars: [
     { id: 'max', name: 'Max', emoji: '💪', grad: 'terracotta', gender: 'm', voiceTts: 'Fenrir', tag: 'Motivation & Disziplin', focus: 'Training, Disziplin, Leistung',
       train: { focus: 'push', intensity: 1, mobility: false, style: 'Kraft & Disziplin' },
@@ -202,3 +205,7 @@ Strenge Sicherheitsregeln:
     storm: { emoji: '⛈️', label: 'Gewitter' }
   }
 };
+
+// 3D-Avatar-Pfad pro Coach vereinheitlichen: Feld existiert immer (null = noch kein
+// GLB → Player nutzt Foto-Demo). Einzelne Coaches dürfen 'models/coach/<id>.glb' setzen.
+window.GDATA.coachAvatars.forEach(a => { if (a.model === undefined) a.model = null; });

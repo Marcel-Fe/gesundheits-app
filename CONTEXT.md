@@ -37,6 +37,11 @@ Nutzer: die eigene Familie; später ggf. Veröffentlichung.
 - `node tools/test-logic.mjs` bleibt grün (31 Tests, Stand Juni 2026).
 
 ## Aktueller Stand
-2026-06-10 — Struktur-Refactor: Monolithen app.js (1641 Z.) und content.js
-(939 Z.) in 12 Feature-/Daten-Module aufgeteilt (Cache v25). Funktional auf
-Stand v24: Tracker, 500+ Lebensmittel, Mitmach-Player, KI-Coach mit Avataren.
+2026-06-15 — 3D-Coach im Player (Cache v31): `js/app/play3d.js` lädt three.js lazy
+per CDN und lässt den Coach die Übung als 3D-Figur vormachen, mit hartem Fallback
+auf die Foto-Demo (kein WebGL/kein GLB/reduced-motion). GLBs liegen lokal unter
+`models/` (Runtime-Cache, nicht Install-Cache) — Avatare/Animationen stellt der
+Nutzer bereit (Anleitung: `models/README.md`, Entscheidung: ADR-002). Aktuell ist
+für keinen Coach ein `model` gesetzt → Verhalten wie zuvor.
+Davor (v25): Struktur-Refactor app.js/content.js → 12 Module; Tracker, 500+
+Lebensmittel, Mitmach-Player, sprechender KI-Coach mit Avataren.

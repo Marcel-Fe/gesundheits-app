@@ -111,7 +111,23 @@
   };
   exercises.forEach(e => { const f = EX_PHOTO[e.id]; if (f) e.anim = { a: `${EX_BASE}${f}/0.jpg`, b: `${EX_BASE}${f}/1.jpg` }; });
 
+  // Übung → 3D-Animationsname (Datei: models/anim/<name>.glb). Der Coach macht die
+  // Bewegung im Player als 3D-Figur vor; fehlt das GLB, greift die Foto-Demo oben.
+  // Varianten teilen sich die passende Grundbewegung (analog EX_PHOTO).
+  const EX_ANIM_3D = {
+    pushups: 'pushup', knee_pushups: 'pushup', diamond_pushups: 'pushup', pike_pushups: 'pushup',
+    incline_pushups: 'pushup', wide_pushups: 'pushup', decline_pushups: 'pushup', chair_dips: 'pushup',
+    squats: 'squat', jump_squats: 'squat', wall_sit: 'squat',
+    lunges: 'lunge', step_ups: 'lunge',
+    jumping_jacks: 'jumping_jacks', high_knees: 'jumping_jacks',
+    burpees: 'burpee', mountain_climbers: 'burpee',
+    plank: 'plank', side_plank: 'plank',
+    sit_ups: 'situp', crunches: 'situp', jackknife: 'situp', leg_raises: 'situp',
+    reverse_crunch: 'situp', bicycle_crunch: 'situp', russian_twist: 'situp'
+  };
+
   root.GCPARTS = root.GCPARTS || {};
   root.GCPARTS.exercises = exercises;
+  root.EX_ANIM_3D = EX_ANIM_3D;
   if (typeof module !== 'undefined' && module.exports) module.exports = exercises;
 })(typeof window !== 'undefined' ? window : globalThis);

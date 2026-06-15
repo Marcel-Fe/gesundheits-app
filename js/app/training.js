@@ -172,6 +172,7 @@ function stopPlay() {
   if (playTimer) { clearInterval(playTimer); playTimer = null; }
   if (ttsOk) { try { speechSynthesis.cancel(); } catch {} }
   stopNatural();
+  if (window.play3dDispose) play3dDispose(); // WebGL-Kontext sauber freigeben
 }
 function announceStep() {
   const st = state.playSteps[state.playIdx];
@@ -217,8 +218,37 @@ function playCoachStrip() {
     <div class="play-coach-line" id="coach-line">${esc(av.name)} begleitet dich…</div>
   </div>`;
 }
+// ===== 3D-Coach: Übung als animierte Figur vormachen (Fallback: Foto-Demo) =====
+function anim3dSpec(ex) {
+  const name = ex && window.EX_ANIM_3D ? window.EX_ANIM_3D[ex.id] : null;
+  return name ? `models/anim/${name}.glb` : null;
+}
+function canPlay3d(ex) {
+  const coach = coachAvatarById(state.coachAvatar);
+  return !!(coach && coach.model && anim3dSpec(ex) && typeof play3dSupported === 'function' && play3dSupported());
+}
+// Die bisherige Foto-Demo (free-exercise-db) – auch der 3D-Fallback.
+function exMediaHTML(ex) {
+  return (ex && ex.anim)
+    ? `<div class="play-media ex-anim"><span class="anim-emoji g-${ex.grad}">${ex.emoji}</span><img class="anim-fr" src="${esc(ex.anim.a)}" alt="" onerror="this.style.display='none'"><img class="anim-fr b" src="${esc(ex.anim.b)}" alt="" onerror="this.style.display='none'"></div>`
+    : `<div class="play-media play-emoji g-${ex ? ex.grad : 'sage'}">${ex ? ex.emoji : '🏁'}</div>`;
+}
+// Renderer einmal mounten, danach nur noch umhängen + Clip wechseln (kein Flackern).
+function setupPlay3d(ex) {
+  const box = document.getElementById('play3d');
+  if (!box) return;
+  const spec = anim3dSpec(ex);
+  if (window.play3dActive && play3dActive()) { play3dAttach(box); play3dPlay(spec); return; }
+  const coach = coachAvatarById(state.coachAvatar);
+  play3dMount(box, coach.model).then(ok => {
+    if (state.route !== 'play') { play3dDispose(); return; } // Player inzwischen verlassen
+    if (ok) { play3dPlay(spec); return; }
+    if (box.isConnected) box.outerHTML = exMediaHTML(ex);     // 3D nicht möglich → Foto-Demo
+  });
+}
 function renderPlay() {
   if (state.playDone) {
+    if (window.play3dDispose) play3dDispose();
     const s = L.sessionById(C, state.playSession);
     app.innerHTML = `<div class="screen play-screen done">
       <div class="play-done">
@@ -236,9 +266,10 @@ function renderPlay() {
   const overallPct = Math.round((state.playIdx) / state.playSteps.length * 100);
   const isRest = st.kind === 'rest';
   const ex = isRest ? st.nextEx : st.ex;
-  const media = (ex && ex.anim)
-    ? `<div class="play-media ex-anim"><span class="anim-emoji g-${ex.grad}">${ex.emoji}</span><img class="anim-fr" src="${esc(ex.anim.a)}" alt="" onerror="this.style.display='none'"><img class="anim-fr b" src="${esc(ex.anim.b)}" alt="" onerror="this.style.display='none'"></div>`
-    : `<div class="play-media play-emoji g-${ex ? ex.grad : 'sage'}">${ex ? ex.emoji : '🏁'}</div>`;
+  const use3d = canPlay3d(ex);
+  const media = use3d
+    ? `<div class="play-media" id="play3d"></div>`
+    : exMediaHTML(ex);
   const target = isRest ? '' : (st.targetText || (st.isHold ? `${st.hold} Sekunden halten` : `${st.reps} Wiederholungen`));
   const phaseLabel = st.phase === 'warmup' ? '🔥 Aufwärmen' : st.phase === 'cooldown' ? '🧘 Abkühlen' : null;
   app.innerHTML = `<div class="screen play-screen ${isRest ? 'rest' : 'work'}">
@@ -264,6 +295,7 @@ function renderPlay() {
   document.getElementById('play-sound').onclick = () => { state.playVoice = !state.playVoice; if (!state.playVoice) { if (ttsOk) speechSynthesis.cancel(); stopNatural(); } renderPlay(); };
   document.getElementById('play-pause').onclick = () => { state.playPaused = !state.playPaused; if (state.playPaused) { if (ttsOk) speechSynthesis.cancel(); stopNatural(); } renderPlay(); };
   document.getElementById('play-skip').onclick = () => { if (ttsOk) speechSynthesis.cancel(); stopNatural(); advanceStep(); };
+  if (use3d) setupPlay3d(ex);
 }
 
 // ===== Wissen: Vitamine & Nährstoffe =====
