@@ -227,6 +227,13 @@ button { font-family: inherit; cursor: pointer; }
 .coach-meta { flex: 1; min-width: 0; }
 .coach-name { font-weight: 800; font-size: 18px; letter-spacing: -0.3px; }
 .coach-tag { color: var(--text-2); font-size: 12px; font-weight: 600; }
+/* Sprach-Leiste oben im Coach-Chat: Stimme an/aus + Sprechen */
+.coach-voicebar { display: flex; gap: 8px; margin: 12px 0 2px; }
+.voice-pill { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: var(--shadow-sm); }
+.voice-pill:active { transform: scale(.97); }
+.voice-pill:disabled { opacity: .5; }
+.voice-pill.on { background: var(--green); color: #fff; border-color: var(--green); }
+.voice-pill.talk.listening { background: #EF4444; color: #fff; border-color: #EF4444; animation: micpulse 1.1s ease-in-out infinite; }
 .consent-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s3) var(--s4); margin-bottom: var(--s3); box-shadow: var(--shadow-sm); }
 
 /* ===== Fortschritt: Gewichts-Chart ===== */

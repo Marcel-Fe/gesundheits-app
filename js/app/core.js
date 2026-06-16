@@ -57,7 +57,7 @@ const state = {
   workout: null, energy: 'normal', exerciseId: null, woVariation: 0,
   vitaminId: null, sessionId: null, foodId: null,
   intake: load(STORE.intake, {}), calGoal: load(STORE.calGoal, null), foodQuery: '',
-  voiceOut: load('gapp.voice', false), listening: false,
+  voiceOut: load('gapp.voice', true), listening: false,
   coachAvatar: load('gapp.coachAvatar', null), coachConsent: load('gapp.coachConsent', false),
   weight: load(STORE.weight, []), water: load(STORE.water, {}),
   mood: load(STORE.mood, {})

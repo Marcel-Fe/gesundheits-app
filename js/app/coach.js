@@ -5,6 +5,11 @@
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const ttsOk = 'speechSynthesis' in window;
 
+// Mikrofon-Status auf allen Sprech-Buttons (oben + Eingabezeile) anzeigen.
+function setMicVisual(on) {
+  ['chat-mic', 'ki-talk'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('listening', on); });
+}
+
 function startListening() {
   if (!SR) { alert('Spracheingabe wird von diesem Browser nicht unterstützt. Tipp: Chrome oder Safari.'); return; }
   if (state.listening) { stopListening(); return; }
@@ -14,8 +19,7 @@ function startListening() {
   r.lang = 'de-DE'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
   state.listening = true;
   const input = document.getElementById('chat-input');
-  const mic = document.getElementById('chat-mic');
-  if (mic) mic.classList.add('listening');
+  setMicVisual(true);
   if (input) input.placeholder = '🎤 Ich höre zu…';
   r.onresult = e => { let t = ''; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; if (input) input.value = t; };
   r.onerror = () => stopListening();
@@ -23,7 +27,7 @@ function startListening() {
     const input2 = document.getElementById('chat-input');
     const t = (input2 && input2.value || '').trim();
     state.listening = false;
-    const m = document.getElementById('chat-mic'); if (m) m.classList.remove('listening');
+    setMicVisual(false);
     if (input2) input2.placeholder = 'Deine Frage…';
     if (t && !state.chatBusy) sendToKI(t);
   };
@@ -31,7 +35,7 @@ function startListening() {
 }
 function stopListening() {
   state.listening = false;
-  const m = document.getElementById('chat-mic'); if (m) m.classList.remove('listening');
+  setMicVisual(false);
   try { recog && recog.stop(); } catch {}
 }
 // Beste deutsche Stimme passend zum Avatar-Geschlecht (best-effort, je nach Gerät).
@@ -122,15 +126,16 @@ function renderChat() {
       <div class="page-head">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <button class="btn btn-ghost" id="ki-back" style="width:auto;padding:8px 14px">← Zurück</button>
-          <div style="display:flex;gap:6px">
-            <button class="btn btn-ghost" id="ki-verlauf" style="width:auto;padding:8px 14px">🕘 Verlauf</button>
-            ${ttsOk ? `<button class="btn btn-ghost" id="ki-speaker" style="width:auto;padding:8px 14px">${state.voiceOut ? '🔊' : '🔇'}</button>` : ''}
-          </div>
+          <button class="btn btn-ghost" id="ki-verlauf" style="width:auto;padding:8px 14px">🕘 Verlauf</button>
         </div>
         <div class="coach-bar">
           ${coachFace(av, 'coach-face')}
           <div class="coach-meta"><div class="coach-name">${esc(av.name)}</div><div class="coach-tag">${esc(av.tag)}</div></div>
           <button class="link-btn" id="coach-switch">wechseln</button>
+        </div>
+        <div class="coach-voicebar">
+          ${ttsOk ? `<button class="voice-pill ${state.voiceOut ? 'on' : ''}" id="ki-voice">${state.voiceOut ? '🔊 Stimme an' : '🔇 Stimme aus'}</button>` : ''}
+          ${SR ? `<button class="voice-pill talk" id="ki-talk" ${noEndpoint ? 'disabled' : ''}>🎤 Sprechen</button>` : ''}
         </div>
       </div>
       ${noEndpoint ? '<div class="warn-banner">KI noch nicht verbunden.</div>' : ''}
@@ -163,11 +168,13 @@ function renderChat() {
   send.onclick = fire;
   input.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); fire(); } };
   app.querySelectorAll('[data-suggest]').forEach(el => el.onclick = () => { if (!state.chatBusy) { ttsUnlock(); sendToKI(el.dataset.suggest); } });
-  const speaker = document.getElementById('ki-speaker');
-  if (speaker) speaker.onclick = () => { state.voiceOut = !state.voiceOut; save('gapp.voice', state.voiceOut); if (!state.voiceOut) { if (ttsOk) speechSynthesis.cancel(); stopNatural(); } else ttsUnlock(); renderChat(); };
+  const voiceBtn = document.getElementById('ki-voice');
+  if (voiceBtn) voiceBtn.onclick = () => { state.voiceOut = !state.voiceOut; save('gapp.voice', state.voiceOut); if (!state.voiceOut) { if (ttsOk) speechSynthesis.cancel(); stopNatural(); } else ttsUnlock(); renderChat(); };
+  const talk = document.getElementById('ki-talk');
+  if (talk) talk.onclick = () => { ttsUnlock(); startListening(); };
   const mic = document.getElementById('chat-mic');
-  if (mic) mic.onclick = () => startListening();
-  if (state.listening && mic) mic.classList.add('listening');
+  if (mic) mic.onclick = () => { ttsUnlock(); startListening(); };
+  if (state.listening) setMicVisual(true);
 }
 
 async function sendToKI(text) {
@@ -185,11 +192,17 @@ async function sendToKI(text) {
     const consent = state.coachConsent
       ? '\n\nDer Nutzer hat der Coaching-Einwilligung zugestimmt (App ist kein Arzt, nur Coaching).'
       : '\n\nWICHTIG: Der Nutzer hat der Coaching-Einwilligung NOCH NICHT zugestimmt. Gib daher KEINE detaillierten medizinischen oder Vitalstoff-/Supplement-Empfehlungen. Bleibe bei allgemeinen, sicheren Tipps zu Bewegung und Ernährung und weise freundlich darauf hin, dass detailliertes Vital-Coaching erst nach der Zustimmung oben im Coach möglich ist.';
-    const res = await fetch(D.kiEndpoint, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: state.chat.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', text: m.content })), systemInstruction: persona + D.kiSystemPrompt + consent + note })
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const body = JSON.stringify({ messages: state.chat.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', text: m.content })), systemInstruction: persona + D.kiSystemPrompt + consent + note });
+    // Bis zu 2 Versuche – ein kurzer Netz-Aussetzer soll den Coach nicht verstummen lassen.
+    let res = null, lastErr = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        res = await fetch(D.kiEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        break;
+      } catch (e) { lastErr = e; res = null; if (attempt === 0) await new Promise(r => setTimeout(r, 900)); }
+    }
+    if (!res) throw lastErr || new Error('no response');
     const data = await res.json();
     const reply = data.text || data.reply || 'Keine Antwort erhalten.';
     state.chat.push({ role: 'assistant', content: reply });
