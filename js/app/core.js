@@ -72,11 +72,21 @@ const coachAvatarById = id => (D.coachAvatars || []).find(a => a.id === id) || n
 const ttsCache = new Map();
 let ttsAudio = null; // ein wiederverwendetes Element – per Nutzer-Klick freigeschaltet (iOS)
 function ttsUnlock() {
+  // Beide Sprach-Pfade im Gesten-Kontext freischalten – sonst blockieren strenge
+  // Browser (v. a. iOS) die spätere, asynchrone Wiedergabe nach der KI-Antwort.
   try {
     if (!ttsAudio) ttsAudio = new Audio();
-    // 1 Sample Stille: schaltet spätere programmatische Wiedergabe frei
+    ttsAudio.muted = false;
+    // 1 Sample Stille: schaltet spätere programmatische Wiedergabe des Elements frei
     ttsAudio.src = 'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQIAAAAAAA==';
-    ttsAudio.play().catch(() => {});
+    const p = ttsAudio.play(); if (p && p.catch) p.catch(() => {});
+  } catch {}
+  // Geräte-Stimme (Web Speech) ebenfalls per stummer Äußerung freischalten (iOS-Trick)
+  try {
+    if ('speechSynthesis' in window) {
+      const u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.lang = 'de-DE';
+      speechSynthesis.speak(u);
+    }
   } catch {}
 }
 // Gemini liefert rohes PCM (16 Bit mono) – für <audio> in einen WAV-Container packen.

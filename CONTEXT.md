@@ -37,11 +37,14 @@ Nutzer: die eigene Familie; später ggf. Veröffentlichung.
 - `node tools/test-logic.mjs` bleibt grün (31 Tests, Stand Juni 2026).
 
 ## Aktueller Stand
-2026-06-15 — 3D-Coach im Player (Cache v31): `js/app/play3d.js` lädt three.js lazy
-per CDN und lässt den Coach die Übung als 3D-Figur vormachen, mit hartem Fallback
-auf die Foto-Demo (kein WebGL/kein GLB/reduced-motion). GLBs liegen lokal unter
-`models/` (Runtime-Cache, nicht Install-Cache) — Avatare/Animationen stellt der
-Nutzer bereit (Anleitung: `models/README.md`, Entscheidung: ADR-002). Aktuell ist
-für keinen Coach ein `model` gesetzt → Verhalten wie zuvor.
+2026-06-16 — Prozeduraler 3D-Coach (Cache v36): `js/app/figure3d.js` baut eine
+geriggte Figur aus Primitiven (in Coach-Farbe) und animiert die Übungen per Code
+(squat, jumping_jacks, pushup, plank, situp, lunge, burpee, march-Fallback) — ganz
+OHNE externe Assets/Login. Standard-Weg im Player; hat ein Coach ein `model` (GLB),
+läuft stattdessen `play3d.js` (Ready-Player-Me + Mixamo-FBX, Retarget). Fallback-Kette:
+GLB → prozedurale Figur → Foto-Demo (kein WebGL/reduced-motion). Studio-Look (ACES,
+Schatten). Design auf Horizon-Look (kühl, Glas, weiche Schatten) umgestellt.
+Sprach-Freischaltung gehärtet (Audio + Web Speech in der Geste, iOS).
+Davor: `js/app/play3d.js` (GLB-Weg), Service-Worker selbstheilend (Network-First).
 Davor (v25): Struktur-Refactor app.js/content.js → 12 Module; Tracker, 500+
 Lebensmittel, Mitmach-Player, sprechender KI-Coach mit Avataren.

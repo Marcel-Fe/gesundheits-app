@@ -172,7 +172,8 @@ function stopPlay() {
   if (playTimer) { clearInterval(playTimer); playTimer = null; }
   if (ttsOk) { try { speechSynthesis.cancel(); } catch {} }
   stopNatural();
-  if (window.play3dDispose) play3dDispose(); // WebGL-Kontext sauber freigeben
+  if (window.play3dDispose) play3dDispose();     // WebGL-Kontext sauber freigeben
+  if (window.figure3dDispose) figure3dDispose();
 }
 function announceStep() {
   const st = state.playSteps[state.playIdx];
@@ -224,8 +225,9 @@ function anim3dSpec(ex) {
   return name ? `models/anim/${name}.fbx` : null; // Mixamo-FBX direkt (keine Konvertierung)
 }
 function canPlay3d(ex) {
-  const coach = coachAvatarById(state.coachAvatar);
-  return !!(coach && coach.model && anim3dSpec(ex) && typeof play3dSupported === 'function' && play3dSupported());
+  // 3D ist verfügbar, sobald WebGL/Bewegung ok ist – die prozedurale Coach-Figur
+  // braucht keine Assets. Ein gesetztes coach.model nutzt zusätzlich den GLB-Weg.
+  return !!(ex && typeof figure3dSupported === 'function' && figure3dSupported());
 }
 // Die bisherige Foto-Demo (free-exercise-db) – auch der 3D-Fallback.
 function exMediaHTML(ex) {
@@ -233,22 +235,38 @@ function exMediaHTML(ex) {
     ? `<div class="play-media ex-anim"><span class="anim-emoji g-${ex.grad}">${ex.emoji}</span><img class="anim-fr" src="${esc(ex.anim.a)}" alt="" onerror="this.style.display='none'"><img class="anim-fr b" src="${esc(ex.anim.b)}" alt="" onerror="this.style.display='none'"></div>`
     : `<div class="play-media play-emoji g-${ex ? ex.grad : 'sage'}">${ex ? ex.emoji : '🏁'}</div>`;
 }
-// Renderer einmal mounten, danach nur noch umhängen + Clip wechseln (kein Flackern).
+// Renderer einmal mounten, danach nur noch umhängen + Bewegung wechseln (kein Flackern).
+// Hat der Coach ein GLB-Modell (Ready-Player-Me), läuft der echte Avatar-Weg (play3d);
+// sonst macht die prozedurale Figur (figure3d) die Übung vor – ganz ohne Assets.
 function setupPlay3d(ex) {
   const box = document.getElementById('play3d');
   if (!box) return;
-  const spec = anim3dSpec(ex);
-  if (window.play3dActive && play3dActive()) { play3dAttach(box); play3dPlay(spec); return; }
   const coach = coachAvatarById(state.coachAvatar);
-  play3dMount(box, coach.model).then(ok => {
-    if (state.route !== 'play') { play3dDispose(); return; } // Player inzwischen verlassen
-    if (ok) { play3dPlay(spec); return; }
-    if (box.isConnected) box.outerHTML = exMediaHTML(ex);     // 3D nicht möglich → Foto-Demo
+  const spec = anim3dSpec(ex);
+  const useGlb = !!(coach && coach.model && spec && typeof play3dSupported === 'function' && play3dSupported());
+  if (useGlb) {
+    if (window.play3dActive && play3dActive()) { play3dAttach(box); play3dPlay(spec); return; }
+    play3dMount(box, coach.model).then(ok => {
+      if (state.route !== 'play') { play3dDispose(); return; }
+      if (ok) play3dPlay(spec); else setupFigure(ex, box); // GLB-Fehler → Figur
+    });
+    return;
+  }
+  setupFigure(ex, box);
+}
+function setupFigure(ex, box) {
+  if (window.figure3dActive && figure3dActive()) { figure3dAttach(box); figure3dPlay(ex.id); return; }
+  const coach = coachAvatarById(state.coachAvatar);
+  figure3dMount(box, coach).then(ok => {
+    if (state.route !== 'play') { figure3dDispose(); return; } // Player inzwischen verlassen
+    if (ok) figure3dPlay(ex.id);
+    else if (box.isConnected) box.outerHTML = exMediaHTML(ex);  // kein WebGL → Foto-Demo
   });
 }
 function renderPlay() {
   if (state.playDone) {
     if (window.play3dDispose) play3dDispose();
+    if (window.figure3dDispose) figure3dDispose();
     const s = L.sessionById(C, state.playSession);
     app.innerHTML = `<div class="screen play-screen done">
       <div class="play-done">
